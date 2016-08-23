@@ -19,7 +19,6 @@ class FreeClassifier:
                 dictionary of class names that are mapped to corresponding index
                 in weights
         """
-        print('weights shape', weights.shape)
         self.weights = weights
         self.classorder = classorder
         self.orderedclasses = [''] * len(self.classorder)
