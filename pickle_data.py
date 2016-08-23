@@ -8,7 +8,8 @@ import os
 import pickle
 import time
 
-import ankura.pipeline as pipeline
+import ankura.label as label
+import ankura.pipeline
 
 from classtm.labeled import ClassifiedDataset, get_labels
 from activetm import utils

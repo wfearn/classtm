@@ -60,6 +60,7 @@ def _run():
                                     utils.get_pickle_name(args.settings))
         with open(input_pickle, 'rb') as ifh:
             dataset = pickle.load(ifh)
+            dataset.setfilladdrowfunc(settings['filladdrowopt'])
         # print('Got pickle')
         if args.seed == -1:
             rng = random.Random(int(settings['seed']))
