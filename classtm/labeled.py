@@ -102,14 +102,19 @@ class ClassifiedDataset(ankura.pipeline.Dataset):
         data = docwords_csr.data
         # calculate the label totals
         label_totals = [0 for i in range(classcount)]
-        for j in range(orig_height):
-            for docnum, datum in zip(indices[indptr[j]:indptr[j+1]],
-                                     data[indptr[j]:indptr[j+1]]):
-                label = self.classorder[self.labels[self.titles[docnum]]]
-                label_totals[label] += 1
+        for title in self.titles:
+            label = self.classorder[self.labels[title]]
+            label_totals[label] += 1
+        for i in range(orig_height):
+            for docnum, datum in zip(indices[indptr[i]:indptr[i+1]],
+                                     data[indptr[i]:indptr[i+1]]):
                 if datum > 0:
-                # Calculate occurrences for bottom rows
-                self._cooccurrences[orig_height+label, j] += 1
+                    label = self.classorder[self.labels[self.titles[docnum]]]
+                    # Calculate occurrences for bottom rows.
+                    # We iterate through the words (by row), if the word appears
+                    # in a document then we add 1 to the cooccurrence count of
+                    # that word with the label of the document.
+                    self._cooccurrences[orig_height+label, i] += 1
         for label, total in enumerate(label_totals):
             self._cooccurrences[orig_height+label, :-classcount] /= total
 
