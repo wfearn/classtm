@@ -8,7 +8,7 @@ import socket
 import time
 
 from activetm import utils
-from classtm import models
+from classtm.models import FreeClassifyingAnchor
 from classtm import evaluate
 
 
@@ -23,7 +23,7 @@ def _ensure_dir_exists(dirname):
 
 def partition_data_ids(num_docs, rng, settings):
     """Parition data"""
-    testsize = settings['testsize']
+    testsize = int(settings['testsize'])
     shuffled_doc_ids = list(range(num_docs))
     rng.shuffle(shuffled_doc_ids)
     return shuffled_doc_ids[:testsize], shuffled_doc_ids[testsize:]
@@ -60,16 +60,16 @@ def _run():
                                     utils.get_pickle_name(args.settings))
         with open(input_pickle, 'rb') as ifh:
             dataset = pickle.load(ifh)
-            dataset.setfilladdrowfunc(settings['filladdrowopt'])
+            dataset.setfilladdrowsfunc(settings['filladdrowsopt'])
         # print('Got pickle')
         if args.seed == -1:
             rng = random.Random(int(settings['seed']))
         else:
             rng = random.Random(args.seed)
         # print('Set random seed: ', args.seed)
-        model = models.build(rng,
-                             int(settings['numtopics']),
-                             float(settings['expgrad_epsilon']))
+        model = FreeClassifyingAnchor(rng,
+                                      int(settings['numtopics']),
+                                      float(settings['expgrad_epsilon']))
         # print('Built model')
         test_doc_ids, train_doc_ids = partition_data_ids(dataset.num_docs,
                                                          rng,

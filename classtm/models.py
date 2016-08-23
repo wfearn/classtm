@@ -19,6 +19,7 @@ class FreeClassifier:
                 dictionary of class names that are mapped to corresponding index
                 in weights
         """
+        print('weights shape', weights.shape)
         self.weights = weights
         self.classorder = classorder
         self.orderedclasses = [''] * len(self.classorder)
@@ -58,7 +59,8 @@ def build_train_set(dataset, train_doc_ids, knownresp):
         labels[dataset.titles[doc]] = resp
     trainingset = classtm.labeled.ClassifiedDataset(filtered,
                                                     labels,
-                                                    dataset.classorder)
+                                                    dataset.classorder,
+                                                    dataset.filladdrowsopt)
     return trainingset, corpus_to_train_vocab, list(range(0, len(train_doc_ids)))
 
 
@@ -112,11 +114,12 @@ class FreeClassifyingAnchor:
                                               project_dim=pdim)
         # relying on fact that recover_topics goes through all rows of Q, the
         # cooccurrence matrix in trainingset
+        # self.topics has shape (vocabsize, numtopics)
         self.topics = ankura.topic.recover_topics(trainingset,
                                                   self.anchors,
                                                   self.expgrad_epsilon)
         classcount = len(trainingset.classorder)
-        self.predictor = FreeClassifier(self.topics[:-classcount],
+        self.predictor = FreeClassifier(self.topics[-classcount:],
                                         self.classorder)
 
     def predict(self, tokens):

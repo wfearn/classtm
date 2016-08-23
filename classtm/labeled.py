@@ -40,8 +40,9 @@ class ClassifiedDataset(ankura.pipeline.Dataset):
                                          dataset.titles)
         self.labels = labels
         self.classorder = classorder
+        self.filladdrowsopt = None
         self.filladdrowsfunc = None
-        self.setfilladdrowfunc(filladdrowsopt)
+        self.setfilladdrowsfunc(filladdrowsopt)
         # precompute vanilla Q
         ankura.pipeline.Dataset.compute_cooccurrences(self)
         self._dataset_cooccurrences = self._cooccurrences
@@ -78,7 +79,7 @@ class ClassifiedDataset(ankura.pipeline.Dataset):
             self._cooccurrences[i, orig_width:] /= total
         self.filladdrowsfunc(classcount)
 
-    def setfilladdrowfunc(self, filladdrowsopt):
+    def setfilladdrowsfunc(self, filladdrowsopt):
         """Sets the function used to fill in the additional rows in Q"""
         if filladdrowsopt == 'transpose':
             self.filladdrowsfunc = self._transpose_columns
@@ -86,6 +87,7 @@ class ClassifiedDataset(ankura.pipeline.Dataset):
             self.filladdrowsfunc = self._flip_conditional
         else:
             raise NotImplementedError('Unknown option '+filladdrowsopt)
+        self.filladdrowsopt = filladdrowsopt
 
     def _transpose_columns(self, classcount):
         """Fills the final rows as the transpose of the augmented columns"""
