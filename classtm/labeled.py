@@ -76,7 +76,7 @@ class ClassifiedDataset(ankura.pipeline.Dataset):
                     self._cooccurrences[i, orig_width+label] += 1
             # normalize tally
             self._cooccurrences[i, orig_width:] /= total
-        self.filladdrowsfunc(self)
+        self.filladdrowsfunc(classcount)
 
     def setfilladdrowfunc(self, filladdrowsopt):
         """Sets the function used to fill in the additional rows in Q"""
