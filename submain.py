@@ -66,7 +66,9 @@ def _run():
         else:
             rng = random.Random(args.seed)
         # print('Set random seed: ', args.seed)
-        model = models.build(rng, settings)
+        model = models.build(rng,
+                             int(settings['numtopics']),
+                             float(settings['expgrad_epsilon']))
         # print('Built model')
         test_doc_ids, train_doc_ids = partition_data_ids(dataset.num_docs,
                                                          rng,
