@@ -103,10 +103,11 @@ class ClassifiedDataset(ankura.pipeline.Dataset):
         # calculate the label totals
         label_totals = [0 for i in range(classcount)]
         for j in range(orig_height):
-            for docnum, data in zip(indices[indptr[j]:indptr[j+1]],
-                                    data[indptr[j]:indptr[j+1]]):
+            for docnum, datum in zip(indices[indptr[j]:indptr[j+1]],
+                                     data[indptr[j]:indptr[j+1]]):
                 label = self.classorder[self.labels[self.titles[docnum]]]
                 label_totals[label] += 1
+                if datum > 0:
                 # Calculate occurrences for bottom rows
                 self._cooccurrences[orig_height+label, j] += 1
         for label, total in enumerate(label_totals):
