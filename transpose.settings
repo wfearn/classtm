@@ -1,7 +1,7 @@
 # corpus options
 pickle  amazon_class.pickle
 corpus  /net/roi/okuda/data/amazon/amazon.txt
-labels  /net/roi/okuda/data/amazon/amazon.response
+labels  /net/roi/okuda/data/amazon/amazon.binary.response
 
 # filter options
 stopwords   /net/roi/okuda/data/stopwords.txt
