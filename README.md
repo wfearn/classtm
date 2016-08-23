@@ -7,7 +7,7 @@ Class(ifying)T(opic)M(odeling) is a framework for exploring supervised anchor wo
 The necessary libraries are listed in `requirements.txt`.  You can install them via
 
 ```
-pip install -r requirments.txt
+pip install -r requirements.txt
 ```
 
 in the `ClassTM` directory.
