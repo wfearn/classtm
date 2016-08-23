@@ -80,7 +80,7 @@ class ClassifiedDataset(ankura.pipeline.Dataset):
 
     def setfilladdrowfunc(self, filladdrowsopt):
         """Sets the function used to fill in the additional rows in Q"""
-        if filladdrowsopt == 'tranpose':
+        if filladdrowsopt == 'transpose':
             self.filladdrowsfunc = self._transpose_columns
         elif filladdrowsopt == 'flip':
             self.filladdrowsfunc = self._flip_conditional
