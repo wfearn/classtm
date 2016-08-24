@@ -106,7 +106,8 @@ def _run():
             pickle.dump({'init_time': init_time,
                          'confusion_matrix': confusion_matrix,
                          'train_time': train_time,
-                         'eval_time': eval_time},
+                         'eval_time': eval_time,
+                         'model': model},
                         ofh)
     finally:
         os.remove(runningfile)

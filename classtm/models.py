@@ -1,7 +1,6 @@
 """Models for use in ClassTM"""
 import numpy as np
 
-from activetm.active.selectors.utils.distance import js_divergence
 import ankura.pipeline
 import classtm.labeled
 
@@ -28,11 +27,11 @@ class FreeClassifier:
     def predict(self, features):
         """Predict class label for features"""
         bestpos = 0
-        bestscore = js_divergence(self.weights[0], features[0])
+        bestscore = np.dot(self.weights[0], features[0])
         for i, classweights in enumerate(self.weights[1:]):
-            curscore = js_divergence(classweights, features[0])
-            if curscore < bestscore:
-                bestpos = i
+            curscore = np.dot(classweights, features[0])
+            if curscore > bestscore:
+                bestpos = i + 1
                 bestscore = curscore
         return self.orderedclasses[bestpos]
 
