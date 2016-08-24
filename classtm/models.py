@@ -57,9 +57,29 @@ def build_train_set(dataset, train_doc_ids, knownresp):
         labels[dataset.titles[doc]] = resp
     trainingset = classtm.labeled.ClassifiedDataset(filtered,
                                                     labels,
-                                                    dataset.classorder,
-                                                    dataset.filladdrowsopt)
+                                                    dataset.classorder)
     return trainingset, corpus_to_train_vocab, list(range(0, len(train_doc_ids)))
+
+
+def id_cands_maker(classcount):
+    """Returns function that returns lest of anchor word candidates"""
+    def id_cands(docwords, doc_threshold):
+        """Returns list of anchor word candidates
+            * docwords :: scipy.sparse.csc
+                sparse matrix of word counts per document; shape is (V, D), where V
+                is the vocabulary size and D is the number of documents
+            * doc_threshold :: int
+                number of documents a word must appear in in order to be an anchor
+                word candidate
+        """
+        candidate_anchors = []
+        docwords_csr = docwords.tocsr()
+        # assuming that docwords[:-classcount] correspond to label pseudo-words
+        for i in range(docwords_csr.shape[0] - classcount):
+            if docwords_csr[i, :].nnz > doc_threshold:
+                candidate_anchors.append(i)
+        return candidate_anchors
+    return id_cands
 
 
 #pylint:disable-msg=too-many-instance-attributes
@@ -102,14 +122,12 @@ class FreeClassifyingAnchor:
             build_train_set(dataset, train_doc_ids, knownresp)
         self.classorder = trainingset.classorder
         pdim = 1000 if trainingset.vocab_size > 1000 else trainingset.vocab_size
-        # relying on fact that identify_candidates (called in
-        # gramschmidt_anchors) iterates through the first V rows only, where V
-        # is equal to the number of rows in the docwords matrix (M)
         self.anchors = \
             ankura.anchor.gramschmidt_anchors(trainingset,
                                               self.numtopics,
                                               0.015 * len(trainingset.titles),
-                                              project_dim=pdim)
+                                              project_dim=pdim,
+                                              id_cands=id_cands_maker(len(self.classorder)))
         # relying on fact that recover_topics goes through all rows of Q, the
         # cooccurrence matrix in trainingset
         # self.topics has shape (vocabsize, numtopics)

@@ -44,8 +44,7 @@ def _run():
         labels, classorder = get_labels(settings['labels'])
         dataset = ClassifiedDataset(pre_dataset,
                                     labels,
-                                    classorder,
-                                    settings['filladdrowsopt'])
+                                    classorder)
         with open(os.path.join(args.outputdir, pickle_name), 'wb') as ofh:
             pickle.dump(dataset, ofh)
     end = time.time()
