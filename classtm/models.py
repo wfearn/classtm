@@ -225,8 +225,8 @@ def logistic_regression(logisticanchor, trainingset, knownresp):
     """Builds trained LogisticRegression"""
     result = LogisticRegression()
     features = np.zeros((len(trainingset.titles), logisticanchor.numtopics))
-    for i, doc in enumerate(trainingset.titles):
-        topic_mixture = logisticanchor.predict_topics(trainingset.doc_tokens(doc))
+    for i in range(len(trainingset.titles)):
+        topic_mixture = logisticanchor.predict_topics(trainingset.doc_tokens(i))
         features[i, :] = topic_mixture
     result.fit(features, np.array(knownresp))
     return result
