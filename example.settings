@@ -16,5 +16,6 @@ seed    531
 testsize    1000
 
 # model options
+model   free
 numtopics   20
 expgrad_epsilon 1e-4
