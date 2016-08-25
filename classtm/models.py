@@ -61,16 +61,21 @@ def build_train_set(dataset, train_doc_ids, knownresp):
     return trainingset, corpus_to_train_vocab, list(range(0, len(train_doc_ids)))
 
 
-def id_cands_maker(classcount):
-    """Returns function that returns lest of anchor word candidates"""
-    def id_cands(docwords, doc_threshold):
+def id_cands_maker(classcount, doc_threshold):
+    """Returns function that returns list of anchor word candidates
+        * classcount :: int
+            number of classes; assumes that the last classcount entries of the
+            vocabulary are the label pseudo-words
+        * doc_threshold :: int
+            number of documents a word must appear in in order to be an anchor
+            word candidate
+
+    """
+    def identify_candidates(docwords):
         """Returns list of anchor word candidates
             * docwords :: scipy.sparse.csc
                 sparse matrix of word counts per document; shape is (V, D), where V
                 is the vocabulary size and D is the number of documents
-            * doc_threshold :: int
-                number of documents a word must appear in in order to be an anchor
-                word candidate
         """
         candidate_anchors = []
         docwords_csr = docwords.tocsr()
@@ -79,7 +84,7 @@ def id_cands_maker(classcount):
             if docwords_csr[i, :].nnz > doc_threshold:
                 candidate_anchors.append(i)
         return candidate_anchors
-    return id_cands
+    return identify_candidates
 
 
 #pylint:disable-msg=too-many-instance-attributes
@@ -125,9 +130,9 @@ class FreeClassifyingAnchor:
         self.anchors = \
             ankura.anchor.gramschmidt_anchors(trainingset,
                                               self.numtopics,
-                                              0.015 * len(trainingset.titles),
-                                              project_dim=pdim,
-                                              id_cands=id_cands_maker(len(self.classorder)))
+                                              id_cands_maker(len(self.classorder),
+                                                             0.015 * len(trainingset.titles)),
+                                              project_dim=pdim)
         # relying on fact that recover_topics goes through all rows of Q, the
         # cooccurrence matrix in trainingset
         # self.topics has shape (vocabsize, numtopics)
