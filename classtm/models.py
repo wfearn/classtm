@@ -1,6 +1,8 @@
 """Models for use in ClassTM"""
+from sklearn.linear_model import LogisticRegression
 import numpy as np
 
+import activetm.tech.anchor
 import ankura.pipeline
 import classtm.labeled
 
@@ -20,9 +22,7 @@ class FreeClassifier:
         """
         self.weights = weights
         self.classorder = classorder
-        self.orderedclasses = [''] * len(self.classorder)
-        for cla in self.classorder:
-            self.orderedclasses[self.classorder[cla]] = cla
+        self.orderedclasses = classtm.labeled.orderclasses(self.classorder)
 
     def predict(self, features):
         """Predict class label for features"""
@@ -33,31 +33,29 @@ class FreeClassifier:
             if curscore > bestscore:
                 bestpos = i + 1
                 bestscore = curscore
-        return self.orderedclasses[bestpos]
+        return np.array([self.orderedclasses[bestpos]])
 
 
-def build_train_set(dataset, train_doc_ids, knownresp):
+def build_train_set(dataset, train_doc_ids, knownresp, trainsettype):
     """Build training set
 
     Return training set, vocab conversion table, and title ids for training set
+
+        * dataset :: AbstractClassifiedDataset
+        * train_doc_ids :: [int]
+        * knownresp :: [?]
+            knownresp[i] is label for document train_doc_ids[i]
+        * trainsettype :: Constructor for AbstractClassifiedDataset
     """
-    tmp = ankura.pipeline.Dataset(dataset.docwords[:, train_doc_ids],
-                                  dataset.vocab,
-                                  [dataset.titles[tid] for tid in train_doc_ids])
-    corpus_to_train_vocab = [-1] * len(dataset.vocab)
-    counter = 0
-    for i in range(len(dataset.vocab)):
-        # keep track of vocabulary left after dropping test set
-        if tmp.docwords[i, :].nnz >= 1:
-            corpus_to_train_vocab[i] = counter
-            counter += 1
-    filtered = ankura.pipeline.filter_rarewords(tmp, 1)
-    labels = {}
-    for doc, resp in zip(train_doc_ids, knownresp):
-        labels[dataset.titles[doc]] = resp
-    trainingset = classtm.labeled.ClassifiedDataset(filtered,
-                                                    labels,
-                                                    dataset.classorder)
+    filtered, corpus_to_train_vocab = \
+        activetm.tech.anchor.get_filtered_for_train(dataset,
+                                                    train_doc_ids)
+    labels = activetm.tech.anchor.get_labels_for_train(dataset,
+                                                       train_doc_ids,
+                                                       knownresp)
+    trainingset = trainsettype(filtered,
+                               labels,
+                               dataset.classorder)
     return trainingset, corpus_to_train_vocab, list(range(0, len(train_doc_ids)))
 
 
@@ -88,25 +86,35 @@ def id_cands_maker(classcount, doc_threshold):
 
 
 #pylint:disable-msg=too-many-instance-attributes
-class FreeClassifyingAnchor:
-    """Algorithm that produces a model for classification tasks
+class AbstractClassifyingAnchor:
+    """Base class for classifying anchor words"""
 
-    As part of the algorithm, a classifier gets trained for free (i.e., the
-    features produced by the model are not used to train a separate classifier)
-    """
-
-    def __init__(self, rng, numtopics, expgrad_epsilon):
-        """FreeClassifyingAnchor requires the following parameters:
+    #pylint:disable-msg=too-many-arguments
+    def __init__(self,
+                 rng,
+                 numtopics,
+                 expgrad_epsilon,
+                 dataset_ctor,
+                 classifier):
+        """AbstractClassifyingAnchor requires the following parameters:
             * rng :: random.Random
                 a random number generator
             * numtopics :: int
                 the number of topics to look for
             * expgrad_epsilon :: float
                 epsilon for exponentiated gradient descent
+            * dataset_ctor :: Contructor for AbstractClassifiedDataset
+            * classifier :: function(AbstractClassifyingAnchor,
+                                     AbstractClassifiedDataset,
+                                     [?])
+                when called, this function returns an sklearn-style classifier
+                that has already been trained
         """
         self.rng = rng
         self.numtopics = numtopics
         self.expgrad_epsilon = expgrad_epsilon
+        self.dataset_ctor = dataset_ctor
+        self.classifier = classifier
         self.numsamplesperpredictchain = 5
         self.anchors = None
         self.topics = None
@@ -124,7 +132,10 @@ class FreeClassifyingAnchor:
                 knownresp[x] is the label for train_doc_ids[x]
         """
         trainingset, self.corpus_to_train_vocab, _ = \
-            build_train_set(dataset, train_doc_ids, knownresp)
+            build_train_set(dataset,
+                            train_doc_ids,
+                            knownresp,
+                            self.dataset_ctor)
         self.classorder = trainingset.classorder
         pdim = 1000 if trainingset.vocab_size > 1000 else trainingset.vocab_size
         self.anchors = \
@@ -139,17 +150,15 @@ class FreeClassifyingAnchor:
         self.topics = ankura.topic.recover_topics(trainingset,
                                                   self.anchors,
                                                   self.expgrad_epsilon)
-        classcount = len(trainingset.classorder)
-        self.predictor = FreeClassifier(self.topics[-classcount:],
-                                        self.classorder)
+        self.predictor = self.classifier(self, trainingset, knownresp)
 
     def predict(self, tokens):
         """Predict label"""
         docws = self._convert_vocab_space(tokens)
         if len(docws) <= 0:
             return self.rng.choice(self.classorder)
-        features = self._predict_topics(docws)
-        return self.predictor.predict(features.reshape((1, -1)))
+        features = self.predict_topics(docws)
+        return self.predictor.predict(features.reshape((1, -1)))[0]
 
     def _convert_vocab_space(self, tokens):
         """Change vocabulary from corpus space to training set space"""
@@ -164,8 +173,11 @@ class FreeClassifyingAnchor:
         """Cleans up any resources used by this instance"""
         pass
 
-    def _predict_topics(self, docws):
-        """Predict topic mixture for docws"""
+    def predict_topics(self, docws):
+        """Predict topic mixture for docws
+
+        Assuming that docws is in trainingset vocabulary space
+        """
         if len(docws) == 0:
             return np.array([1.0/self.numtopics] * self.numtopics)
         result = np.zeros(self.numtopics)
@@ -176,3 +188,72 @@ class FreeClassifyingAnchor:
             result += counts
         result /= (len(docws) * self.numsamplesperpredictchain)
         return result
+
+
+def free_classifier(freeclassifyinganchor, trainingset, _):
+    """Builds a trained FreeClassifier"""
+    classcount = len(trainingset.classorder)
+    return FreeClassifier(freeclassifyinganchor.topics[-classcount:],
+                          freeclassifyinganchor.classorder)
+
+
+#pylint:disable-msg=too-many-instance-attributes
+class FreeClassifyingAnchor(AbstractClassifyingAnchor):
+    """Algorithm that produces a model for classification tasks
+
+    As part of the algorithm, a classifier gets trained for free (i.e., the
+    features produced by the model are not used to train a separate classifier)
+    """
+
+    def __init__(self, rng, numtopics, expgrad_epsilon):
+        super(FreeClassifyingAnchor, self).__init__(rng,
+                                                    numtopics,
+                                                    expgrad_epsilon,
+                                                    classtm.labeled.ClassifiedDataset,
+                                                    free_classifier)
+
+
+def build_train_adapter(dataset, train_doc_ids, knownresp):
+    """Build train set as SupervisedAnchorDataset"""
+    return build_train_set(dataset,
+                           train_doc_ids,
+                           knownresp,
+                           classtm.labeled.SupervisedAnchorDataset)
+
+
+def logistic_regression(logisticanchor, trainingset, knownresp):
+    """Builds trained LogisticRegression"""
+    result = LogisticRegression()
+    features = np.zeros((len(trainingset.titles), logisticanchor.numtopics))
+    for i in range(len(trainingset.titles)):
+        topic_mixture = logisticanchor.predict_topics(trainingset.doc_tokens(i))
+        features[i, :] = topic_mixture
+    result.fit(features, np.array(knownresp))
+    return result
+
+
+class LogisticAnchor(AbstractClassifyingAnchor):
+    """Algorithm that produces a model for classification tasks
+
+    This should run as per Nguyen et al. (NAACL 2015), with logistic regression
+    """
+
+    def __init__(self, rng, numtopics, expgrad_epsilon):
+        super(LogisticAnchor, self).__init__(rng,
+                                             numtopics,
+                                             expgrad_epsilon,
+                                             classtm.labeled.SupervisedAnchorDataset,
+                                             logistic_regression)
+
+
+
+FACTORY = {'logistic': LogisticAnchor,
+           'free': FreeClassifyingAnchor}
+
+
+def build(rng, settings):
+    """Build model according to settings"""
+    numtopics = int(settings['numtopics'])
+    expgrad_epsilon = float(settings['expgrad_epsilon'])
+    return FACTORY[settings['model']](rng, numtopics, expgrad_epsilon)
+

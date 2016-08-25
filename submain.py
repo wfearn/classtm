@@ -8,7 +8,7 @@ import socket
 import time
 
 from activetm import utils
-from classtm.models import FreeClassifyingAnchor
+import classtm.models
 from classtm import evaluate
 
 
@@ -66,9 +66,7 @@ def _run():
         else:
             rng = random.Random(args.seed)
         # print('Set random seed: ', args.seed)
-        model = FreeClassifyingAnchor(rng,
-                                      int(settings['numtopics']),
-                                      float(settings['expgrad_epsilon']))
+        model = classtm.models.build(rng, settings)
         # print('Built model')
         test_doc_ids, train_doc_ids = partition_data_ids(dataset.num_docs,
                                                          rng,
