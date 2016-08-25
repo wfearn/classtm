@@ -1,0 +1,20 @@
+# corpus options
+pickle  amazon.class.pickle
+corpus  /net/roi/okuda/data/amazon/amazon.txt
+labels  /net/roi/okuda/data/amazon/amazon.binary.response
+
+# filter options
+stopwords   /net/roi/okuda/data/stopwords.txt
+rare    5
+common  30000
+smalldoc    5
+pregenerate YES
+
+# experiment options
+group   test
+seed    531
+testsize    1000
+
+# model options
+numtopics   40
+expgrad_epsilon 1e-4
