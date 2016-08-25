@@ -33,7 +33,7 @@ class FreeClassifier:
             if curscore > bestscore:
                 bestpos = i + 1
                 bestscore = curscore
-        return self.orderedclasses[bestpos]
+        return np.array([self.orderedclasses[bestpos]])
 
 
 def build_train_set(dataset, train_doc_ids, knownresp, trainsettype):
@@ -158,7 +158,7 @@ class AbstractClassifyingAnchor:
         if len(docws) <= 0:
             return self.rng.choice(self.classorder)
         features = self.predict_topics(docws)
-        return self.predictor.predict(features.reshape((1, -1)))
+        return self.predictor.predict(features.reshape((1, -1)))[0]
 
     def _convert_vocab_space(self, tokens):
         """Change vocabulary from corpus space to training set space"""
