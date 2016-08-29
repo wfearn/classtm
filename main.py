@@ -6,6 +6,7 @@ import getpass
 import logging
 import os
 import pexpect.pxssh as pxssh
+import pickle
 import shutil
 import subprocess
 import sys
@@ -13,8 +14,10 @@ import threading
 import time
 
 import ankura
+import classtm.models
 
 from classtm import plot
+from classtm import labeled
 from activetm import utils
 
 '''
@@ -46,26 +49,29 @@ class JobThread(threading.Thread):
         self.killed = False
         self.password = password
         self.user = user
+        self.sshclient = pxssh.pxssh(timeout=None)
 
     # TODO use asyncio when code gets upgraded to Python 3
     def run(self):
-        s = pxssh.pxssh(timeout=600)
-        hostname = self.host
-        username = self.user
-        password = self.password
-        s.login(hostname, username, password)
-        s.sendline('python3 ' + os.path.join(self.working_dir.strip(), 'submain.py') + ' ' +\
-                            self.settings.strip() + ' ' +\
-                            self.outputdir.strip() + ' ' +\
-                            self.label.strip())
-        s.prompt()
-        print(s.before)
-        s.logout()
-        while True:
-            time.sleep(1)
+        s = self.sshclient
+        try:
+            s.login(self.host, self.user, self.password)
             if self.killed:
-                s.logout()
-                break
+                return
+            s.sendline('python3 ' + os.path.join(self.working_dir, 'submain.py') + ' ' +\
+                                self.settings + ' ' +\
+                                self.outputdir + ' ' +\
+                                self.label)
+            while True:
+                if self.killed:
+                    return
+                if s.prompt(timeout=1):
+                    break
+            print(s.before)
+            s.logout()
+        except pxssh.ExceptionPxssh as e:
+            print('pxssh failed to login on host ' + self.host)
+            print(e)
 
 
 class PickleThread(threading.Thread):
@@ -87,14 +93,18 @@ class PickleThread(threading.Thread):
                     break
                 else:
                     settings = self.work.pop()
-                s = pxssh.pxssh(timeout=600)
-                s.login(self.host, self.user, self.password)
-                s.sendline('python3 ' + os.path.join(self.working_dir.strip(), 'pickle_data.py') + ' '+\
-                            settings.strip() + ' ' +\
-                            self.outputdir.strip())
-                s.prompt()
-                print(s.before)
-                s.logout()
+                s = pxssh.pxssh(timeout=None)
+                try:
+                    s.login(self.host, self.user, self.password)
+                    s.sendline('python3 ' + os.path.join(self.working_dir, 'pickle_data.py') + ' '+\
+                                settings + ' ' +\
+                                self.outputdir)
+                    s.prompt()
+                    print(s.before)
+                    s.logout()
+                except pxssh.ExceptionPxssh as e:
+                    print('pxssh failed to login on host ' + self.host)
+                    print(e)
 
 
 def generate_settings(filename):
@@ -164,29 +174,30 @@ def run_jobs(hosts, settings, working_dir, outputdir, password, user):
         logging.getLogger(__name__).warning('Killing children')
         for t in threads:
             t.killed = True
-        for t in threads:
-            t.join()
+            if t.sshclient.isalive():
+                t.sshclient.close(force=True)
         runningdir = os.path.join(outputdir, 'running')
         for d in os.listdir(runningdir):
             parts = d.split('.')
-            subprocess.call(['ssh', parts[0],
-                'kill -s 9 ' + parts[-1] + '; exit 0'])
+            logging.getLogger(__name__).warning('killing job ' + parts[-1] + ' on host ' + parts[0])
+            p = pxssh.pxssh()
+            try:
+                p.login(parts[0], user, password)
+                p.sendline('kill -s 9 ' + parts[-1])
+                p.prompt()
+                logging.getLogger(__name__).warning(p.before)
+                p.logout()
+            except pxssh.ExceptionPxssh as e:
+                logging.getLogger(__name__).warning('pxssh failed to login on host ' + parts[0])
+                logging.getLogger(__name__).warning(e)
+        for t in threads:
+            t.join()
         sys.exit(-1)
 
 
 def extract_data(fpath):
-    data = []
-    with open(fpath) as ifh:
-        for line in ifh:
-            line = line.strip()
-            if line and not line.startswith('#'):
-                results = line.split()
-                if len(data) == 0:
-                    for _ in range(len(results)):
-                        data.append([])
-                for i, r in enumerate(results):
-                    data[i].append(float(r))
-    return data
+    with open(fpath, 'rb') as ifh:
+        return pickle.load(ifh)
 
 
 def get_data(dirname):
@@ -210,53 +221,50 @@ def get_stats(mat):
     return mat_medians, mat_means, mat_errs_plus, mat_errs_minus
 
 
+def get_accuracy(datum):
+    true_pos = datum['confusion_matrix']['pos']['pos']
+    true_neg = datum['confusion_matrix']['neg']['neg']
+    false_pos = datum['confusion_matrix']['neg']['pos']
+    false_neg = datum['confusion_matrix']['pos']['neg']
+
+    d_true = 0
+    d_false = 0
+    d_true += true_pos
+    d_true += true_neg
+    d_false += false_pos
+    d_false += false_neg
+    accuracy = d_true / (d_true + d_false)
+    return accuracy
+
+
 def make_plots(outputdir, dirs):
     colors = plot.get_separate_colors(len(dirs))
     dirs.sort()
-    count_plot = plot.Plotter(colors)
-    select_and_train_plot = plot.Plotter(colors)
-    time_plot = plot.Plotter(colors)
-    ymax = float('-inf')
+    accuracy_plot = plot.Plotter(colors)
+    free_accuracy = []
+    sup_accuracy = []
+    num_topics = [20, 40, 60, 80]
     for d in dirs:
-        data = np.array(get_data(os.path.join(outputdir, d)))
-        # for the first document, read off first dimension (the labeled set
-        # counts)
-        counts = data[0,0,:]
-        # set up a 2D matrix with each experiment on its own row and each
-        # experiment's pR^2 results in columns
-        ys_mat = data[:,-1,:]
-        ys_medians, ys_means, ys_errs_minus, ys_errs_plus = get_stats(ys_mat)
-        ys_errs_plus_max = max(ys_errs_plus + ys_means)
-        if ys_errs_plus_max > ymax:
-            ymax = ys_errs_plus_max
-        # set up a 2D matrix with each experiment on its own row and each
-        # experiment's time results in columns
-        times_mat = data[:,1,:]
-        times_medians, times_means, times_errs_minus, times_errs_plus = \
-                get_stats(times_mat)
-        count_plot.plot(counts, ys_means, d, ys_medians, [ys_errs_minus,
-            ys_errs_plus])
-        time_plot.plot(times_means, ys_means, d, ys_medians, [ys_errs_minus,
-            ys_errs_plus], times_medians, [times_errs_minus, times_errs_plus])
-        select_and_train_mat = data[:,2,:]
-        sandt_medians, sandt_means, sandt_errs_minus, sandt_errs_plus = \
-                get_stats(select_and_train_mat)
-        select_and_train_plot.plot(counts, sandt_means, d, sandt_medians,
-                [sandt_errs_minus, sandt_errs_plus])
-    corpus = os.path.basename(outputdir)
-    count_plot.set_xlabel('Number of Labeled Documents')
-    count_plot.set_ylabel('pR$^2$')
-    count_plot.set_ylim([-0.05, ymax])
-    count_plot.savefig(os.path.join(outputdir, corpus+'.counts.pdf'))
-    time_plot.set_xlabel('Time elapsed (seconds)')
-    time_plot.set_ylabel('pR$^2$')
-    time_plot.set_ylim([-0.05, ymax])
-    time_plot.savefig(os.path.join(outputdir,
-        corpus+'.times.pdf'))
-    select_and_train_plot.set_xlabel('Number of Labeled Documents')
-    select_and_train_plot.set_ylabel('Time to select and train')
-    select_and_train_plot.savefig(os.path.join(outputdir,
-        corpus+'.select_and_train.pdf'))
+        # pull out the data
+        data = get_data(os.path.join(outputdir, d))
+        eval_times = []
+        init_times = []
+        train_times = []
+        models = []
+        for datum in data:
+            if type(datum['model']) is classtm.models.FreeClassifyingAnchor:
+                free_accuracy.append(get_accuracy(datum))
+            elif type(datum['model']) is classtm.models.LogisticAnchor:
+                sup_accuracy.append(get_accuracy(datum))
+
+    # plot the data
+    accuracy_plot.plot(num_topics, free_accuracy, 'Free Classifier', free_accuracy, yerr=None)
+    accuracy_plot.plot(num_topics, sup_accuracy, 'Supervised Classifier', sup_accuracy, yerr=None)
+    accuracy_plot.set_xlabel('Number of Topics')
+    accuracy_plot.set_ylabel('Accuracy')
+    accuracy_plot.set_ylim([min(min(free_accuracy), min(sup_accuracy)),
+                            max(max(free_accuracy), max(sup_accuracy))])
+    accuracy_plot.savefig(os.path.join(outputdir, 'accuracy.pdf'))
 
 
 def send_notification(email, outdir, run_time):
@@ -286,7 +294,6 @@ if __name__ == '__main__':
             'experiments')
     parser.add_argument('hosts', help='hosts file for job '
             'farming')
-    parser.add_argument('user', help='username to login with')
     parser.add_argument('working_dir', help='ActiveTM directory '
             'available to hosts (should be a network path)')
     parser.add_argument('config', help=\
@@ -299,11 +306,13 @@ if __name__ == '__main__':
             'completes', nargs='?')
     args = parser.parse_args()
 
+    print('Please enter username and password to ssh with')
+    user = input('Username: ')
     password = getpass.getpass('Password: ')
 
     try:
         begin_time = datetime.datetime.now()
-        slack_notification('Starting job: '+args.outputdir)
+#        slack_notification('Starting job: '+args.outputdir)
         runningdir = os.path.join(args.outputdir, 'running')
         if os.path.exists(runningdir):
             shutil.rmtree(runningdir)
@@ -317,19 +326,19 @@ if __name__ == '__main__':
             logging.getLogger(__name__).error('Cannot write output to: '+args.outputdir)
             sys.exit(-1)
         groups = get_groups(args.config)
-        pickle_data(hosts, generate_settings(args.config), args.working_dir,
-                    args.outputdir, password, args.user)
-        run_jobs(hosts, generate_settings(args.config), args.working_dir,
-                 args.outputdir, password, args.user)
+#        pickle_data(hosts, generate_settings(args.config), args.working_dir,
+#                    args.outputdir, password, user)
+#        run_jobs(hosts, generate_settings(args.config), args.working_dir,
+#                 args.outputdir, password, user)
         make_plots(args.outputdir, groups)
         run_time = datetime.datetime.now() - begin_time
         with open(os.path.join(args.outputdir, 'run_time'), 'w') as ofh:
             ofh.write(str(run_time))
         os.rmdir(runningdir)
-        slack_notification('Job complete: '+args.outputdir)
+#        slack_notification('Job complete: '+args.outputdir)
         if args.email:
             send_notification(args.email, args.outputdir, run_time)
     except:
-        slack_notification('Job died: '+args.outputdir)
+#        slack_notification('Job died: '+args.outputdir)
         raise
 
