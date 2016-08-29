@@ -38,7 +38,7 @@ same settings.
 
 
 class JobThread(threading.Thread):
-    def __init__(self, host, working_dir, settings, outputdir, label, password, user):
+    def __init__(self, host, working_dir, settings, outputdir, label, password, user, ssh_key):
         threading.Thread.__init__(self)
         self.daemon = True
         self.host = host
@@ -50,12 +50,13 @@ class JobThread(threading.Thread):
         self.password = password
         self.user = user
         self.sshclient = pxssh.pxssh(timeout=None)
+        self.ssh_key = ssh_key
 
     # TODO use asyncio when code gets upgraded to Python 3
     def run(self):
         s = self.sshclient
         try:
-            s.login(self.host, self.user, self.password)
+            s.login(self.host, self.user, self.password, ssh_key=self.ssh_key)
             if self.killed:
                 return
             s.sendline('python3 ' + os.path.join(self.working_dir, 'submain.py') + ' ' +\
@@ -75,7 +76,7 @@ class JobThread(threading.Thread):
 
 
 class PickleThread(threading.Thread):
-    def __init__(self, host, working_dir, work, outputdir, lock, password, user):
+    def __init__(self, host, working_dir, work, outputdir, lock, password, user, ssh_key):
         threading.Thread.__init__(self)
         self.daemon = True
         self.host = host
@@ -85,6 +86,7 @@ class PickleThread(threading.Thread):
         self.lock = lock
         self.password = password
         self.user = user
+        self.ssh_key = ssh_key
 
     def run(self):
         while True:
@@ -95,7 +97,7 @@ class PickleThread(threading.Thread):
                     settings = self.work.pop()
                 s = pxssh.pxssh(timeout=None)
                 try:
-                    s.login(self.host, self.user, self.password)
+                    s.login(self.host, self.user, self.password, ssh_key=self.ssh_key)
                     s.sendline('python3 ' + os.path.join(self.working_dir, 'pickle_data.py') + ' '+\
                                 settings + ' ' +\
                                 self.outputdir)
@@ -140,7 +142,7 @@ def get_groups(config):
     return sorted(list(result))
 
 
-def pickle_data(hosts, settings, working_dir, outputdir, password, user):
+def pickle_data(hosts, settings, working_dir, outputdir, password, user, ssh_key):
     picklings = set()
     work = set()
     for s in settings:
@@ -151,7 +153,7 @@ def pickle_data(hosts, settings, working_dir, outputdir, password, user):
     lock = threading.Lock()
     threads = []
     for h in set(hosts):
-        t = PickleThread(h, working_dir, work, outputdir, lock, password, user)
+        t = PickleThread(h, working_dir, work, outputdir, lock, password, user, ssh_key)
         threads.append(t)
     for t in threads:
         t.start()
@@ -159,11 +161,11 @@ def pickle_data(hosts, settings, working_dir, outputdir, password, user):
         t.join()
 
 
-def run_jobs(hosts, settings, working_dir, outputdir, password, user):
+def run_jobs(hosts, settings, working_dir, outputdir, password, user, ssh_key):
     threads = []
     try:
         for h, s, i in zip(hosts, settings, range(len(hosts))):
-            t = JobThread(h, working_dir, s, outputdir, str(i), password, user)
+            t = JobThread(h, working_dir, s, outputdir, str(i), password, user, ssh_key)
             t.daemon = True
             threads.append(t)
         for t in threads:
@@ -223,15 +225,6 @@ def get_stats(accs):
         acc_meds.append(np.median(accs[key]))
         acc_means.append(np.mean(accs[key]))
     return acc_bot_errs, acc_top_errs, acc_meds, acc_means
-#    # compute the medians along the columns
-#    mat_medians = np.median(mat, axis=0)
-#    # compute the means along the columns
-#    mat_means = np.mean(mat, axis=0)
-#    # find difference of means from first quartile along the columns
-#    mat_errs_minus = mat_means - np.percentile(mat, 25, axis=0)
-#    # compute third quartile along the columns; find difference from means
-#    mat_errs_plus = np.percentile(mat, 75, axis=0) - mat_means
-#    return mat_medians, mat_means, mat_errs_plus, mat_errs_minus
 
 
 def get_accuracy(datum):
@@ -338,7 +331,11 @@ if __name__ == '__main__':
 
     print('Please enter username and password to ssh with')
     user = input('Username: ')
-    password = getpass.getpass('Password: ')
+    password = getpass.getpass('Password (for ssh or unlocking ssh key, leave blank if no password): ')
+    ssh_key = input('Path to private ssh key (ie ~/.ssh/id_rsa) (leave blank if authenticating with password only): ')
+    print(ssh_key)
+    if ssh_key == '':
+        ssh_key = None
 
     try:
         begin_time = datetime.datetime.now()
@@ -356,10 +353,10 @@ if __name__ == '__main__':
             logging.getLogger(__name__).error('Cannot write output to: '+args.outputdir)
             sys.exit(-1)
         groups = get_groups(args.config)
-#        pickle_data(hosts, generate_settings(args.config), args.working_dir,
-#                    args.outputdir, password, user)
-#        run_jobs(hosts, generate_settings(args.config), args.working_dir,
-#                 args.outputdir, password, user)
+        pickle_data(hosts, generate_settings(args.config), args.working_dir,
+                    args.outputdir, password, user, ssh_key)
+        run_jobs(hosts, generate_settings(args.config), args.working_dir,
+                 args.outputdir, password, user, ssh_key)
         make_plots(args.outputdir, groups)
         run_time = datetime.datetime.now() - begin_time
         with open(os.path.join(args.outputdir, 'run_time'), 'w') as ofh:
