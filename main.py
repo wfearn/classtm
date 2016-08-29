@@ -209,16 +209,29 @@ def get_data(dirname):
     return data
 
 
-def get_stats(mat):
-    # compute the medians along the columns
-    mat_medians = np.median(mat, axis=0)
-    # compute the means along the columns
-    mat_means = np.mean(mat, axis=0)
-    # find difference of means from first quartile along the columns
-    mat_errs_minus = mat_means - np.percentile(mat, 25, axis=0)
-    # compute third quartile along the columns; find difference from means
-    mat_errs_plus = np.percentile(mat, 75, axis=0) - mat_means
-    return mat_medians, mat_means, mat_errs_plus, mat_errs_minus
+def get_stats(accs):
+    """Gets the stats for an accuracy dict"""
+    keys = accs.keys()
+    acc_bot_errs = []
+    acc_top_errs = []
+    acc_meds = []
+    acc_means = []
+
+    for key in keys:
+        acc_bot_errs.append(np.mean(accs[key]) - np.percentile(accs[key], 25))
+        acc_top_errs.append(np.mean(accs[key]) - np.percentile(accs[key], 75))
+        acc_meds.append(np.median(accs[key]))
+        acc_means.append(np.mean(accs[key]))
+    return acc_bot_errs, acc_top_errs, acc_meds, acc_means
+#    # compute the medians along the columns
+#    mat_medians = np.median(mat, axis=0)
+#    # compute the means along the columns
+#    mat_means = np.mean(mat, axis=0)
+#    # find difference of means from first quartile along the columns
+#    mat_errs_minus = mat_means - np.percentile(mat, 25, axis=0)
+#    # compute third quartile along the columns; find difference from means
+#    mat_errs_plus = np.percentile(mat, 75, axis=0) - mat_means
+#    return mat_medians, mat_means, mat_errs_plus, mat_errs_minus
 
 
 def get_accuracy(datum):
@@ -241,9 +254,9 @@ def make_plots(outputdir, dirs):
     colors = plot.get_separate_colors(len(dirs))
     dirs.sort()
     accuracy_plot = plot.Plotter(colors)
-    free_accuracy = []
-    sup_accuracy = []
-    num_topics = [20, 40, 60, 80]
+    free_accuracy = {}
+    sup_accuracy = {}
+    num_topics = {}
     for d in dirs:
         # pull out the data
         data = get_data(os.path.join(outputdir, d))
@@ -252,18 +265,35 @@ def make_plots(outputdir, dirs):
         train_times = []
         models = []
         for datum in data:
+            datum_topicnum = datum['model'].numtopics
+            num_topics[datum_topicnum] = 0
             if type(datum['model']) is classtm.models.FreeClassifyingAnchor:
-                free_accuracy.append(get_accuracy(datum))
+                if datum_topicnum not in free_accuracy:
+                    free_accuracy[datum_topicnum] = []
+                free_accuracy[datum_topicnum].append(get_accuracy(datum))
             elif type(datum['model']) is classtm.models.LogisticAnchor:
-                sup_accuracy.append(get_accuracy(datum))
+                if datum_topicnum not in sup_accuracy:
+                    sup_accuracy[datum_topicnum] = []
+                sup_accuracy[datum_topicnum].append(get_accuracy(datum))
 
     # plot the data
-    accuracy_plot.plot(num_topics, free_accuracy, 'Free Classifier', free_accuracy, yerr=None)
-    accuracy_plot.plot(num_topics, sup_accuracy, 'Supervised Classifier', sup_accuracy, yerr=None)
+    num_topics = sorted(num_topics.keys())
+    free_acc_bot_errs, free_acc_top_errs, free_acc_meds, free_acc_means = get_stats(free_accuracy)
+    sup_acc_bot_errs, sup_acc_top_errs, sup_acc_meds, sup_acc_means = get_stats(sup_accuracy)
+    accuracy_plot.plot(num_topics,
+                       free_acc_meds,
+                       'Free Classifier',
+                       free_acc_means,
+                       yerr=[free_acc_bot_errs, free_acc_top_errs])
+    accuracy_plot.plot(num_topics,
+                       sup_acc_meds,
+                       'Supervised Classifier',
+                       sup_acc_means,
+                       yerr=[sup_acc_bot_errs, sup_acc_top_errs])
     accuracy_plot.set_xlabel('Number of Topics')
     accuracy_plot.set_ylabel('Accuracy')
-    accuracy_plot.set_ylim([min(min(free_accuracy), min(sup_accuracy)),
-                            max(max(free_accuracy), max(sup_accuracy))])
+    accuracy_plot.set_ylim([min(min(free_acc_means), min(sup_acc_means)),
+                            max(max(free_acc_means), max(sup_acc_means))])
     accuracy_plot.savefig(os.path.join(outputdir, 'accuracy.pdf'))
 
 
@@ -312,7 +342,7 @@ if __name__ == '__main__':
 
     try:
         begin_time = datetime.datetime.now()
-#        slack_notification('Starting job: '+args.outputdir)
+        slack_notification('Starting job: '+args.outputdir)
         runningdir = os.path.join(args.outputdir, 'running')
         if os.path.exists(runningdir):
             shutil.rmtree(runningdir)
@@ -326,19 +356,19 @@ if __name__ == '__main__':
             logging.getLogger(__name__).error('Cannot write output to: '+args.outputdir)
             sys.exit(-1)
         groups = get_groups(args.config)
-#        pickle_data(hosts, generate_settings(args.config), args.working_dir,
-#                    args.outputdir, password, user)
-#        run_jobs(hosts, generate_settings(args.config), args.working_dir,
-#                 args.outputdir, password, user)
+        pickle_data(hosts, generate_settings(args.config), args.working_dir,
+                    args.outputdir, password, user)
+        run_jobs(hosts, generate_settings(args.config), args.working_dir,
+                 args.outputdir, password, user)
         make_plots(args.outputdir, groups)
         run_time = datetime.datetime.now() - begin_time
         with open(os.path.join(args.outputdir, 'run_time'), 'w') as ofh:
             ofh.write(str(run_time))
         os.rmdir(runningdir)
-#        slack_notification('Job complete: '+args.outputdir)
+        slack_notification('Job complete: '+args.outputdir)
         if args.email:
             send_notification(args.email, args.outputdir, run_time)
     except:
-#        slack_notification('Job died: '+args.outputdir)
+        slack_notification('Job died: '+args.outputdir)
         raise
 
