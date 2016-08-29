@@ -287,7 +287,7 @@ def make_plots(outputdir, dirs):
     accuracy_plot.set_ylabel('Accuracy')
     accuracy_plot.set_ylim([min(min(free_acc_means), min(sup_acc_means)),
                             max(max(free_acc_means), max(sup_acc_means))])
-    accuracy_plot.savefig(os.path.join(outputdir, 'accuracy3.pdf'))
+    accuracy_plot.savefig(os.path.join(outputdir, 'accuracy.pdf'))
 
 
 def send_notification(email, outdir, run_time):
@@ -339,7 +339,7 @@ if __name__ == '__main__':
 
     try:
         begin_time = datetime.datetime.now()
-#        slack_notification('Starting job: '+args.outputdir)
+        slack_notification('Starting job: '+args.outputdir)
         runningdir = os.path.join(args.outputdir, 'running')
         if os.path.exists(runningdir):
             shutil.rmtree(runningdir)
@@ -362,11 +362,11 @@ if __name__ == '__main__':
         with open(os.path.join(args.outputdir, 'run_time'), 'w') as ofh:
             ofh.write(str(run_time))
         os.rmdir(runningdir)
-#        slack_notification('Job complete: '+args.outputdir)
+        slack_notification('Job complete: '+args.outputdir)
         if args.email:
             send_notification(args.email, args.outputdir, run_time)
     except Exception as e:
         print(e)
-#        slack_notification('Job died: '+args.outputdir)
+        slack_notification('Job died: '+args.outputdir)
         raise
 
