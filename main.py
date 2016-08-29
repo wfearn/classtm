@@ -254,7 +254,15 @@ def make_label(xlabel, ylabel):
 
 
 def make_plot(datas, num_topics, labels, outputdir, filename, colors):
-    """Makes a single plot with multiple lines"""
+    """Makes a single plot with multiple lines
+    
+    datas: {['free' or 'log']: [float]}
+    num_topics: [int]
+    labels: {'xlabel': string, 'ylabel': string}
+    outputdir: string
+    filename: string
+    colors: returned by plot.get_separate_colors(int)
+    """
     new_plot = plot.Plotter(colors)
     min_y = float('inf')
     max_y = float('-inf')
