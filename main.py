@@ -219,7 +219,7 @@ def get_stats(accs):
 
     for key in keys:
         acc_bot_errs.append(np.mean(accs[key]) - np.percentile(accs[key], 25))
-        acc_top_errs.append(np.mean(accs[key]) - np.percentile(accs[key], 75))
+        acc_top_errs.append(np.percentile(accs[key], 75) - np.mean(accs[key]))
         acc_meds.append(np.median(accs[key]))
         acc_means.append(np.mean(accs[key]))
     return acc_bot_errs, acc_top_errs, acc_meds, acc_means
@@ -281,20 +281,20 @@ def make_plots(outputdir, dirs):
     free_acc_bot_errs, free_acc_top_errs, free_acc_meds, free_acc_means = get_stats(free_accuracy)
     sup_acc_bot_errs, sup_acc_top_errs, sup_acc_meds, sup_acc_means = get_stats(sup_accuracy)
     accuracy_plot.plot(num_topics,
-                       free_acc_meds,
-                       'Free Classifier',
                        free_acc_means,
+                       'Free Classifier',
+                       free_acc_meds,
                        yerr=[free_acc_bot_errs, free_acc_top_errs])
     accuracy_plot.plot(num_topics,
-                       sup_acc_meds,
-                       'Supervised Classifier',
                        sup_acc_means,
+                       'Supervised Classifier',
+                       sup_acc_meds,
                        yerr=[sup_acc_bot_errs, sup_acc_top_errs])
     accuracy_plot.set_xlabel('Number of Topics')
     accuracy_plot.set_ylabel('Accuracy')
     accuracy_plot.set_ylim([min(min(free_acc_means), min(sup_acc_means)),
                             max(max(free_acc_means), max(sup_acc_means))])
-    accuracy_plot.savefig(os.path.join(outputdir, 'accuracy.pdf'))
+    accuracy_plot.savefig(os.path.join(outputdir, 'accuracy3.pdf'))
 
 
 def send_notification(email, outdir, run_time):
@@ -342,7 +342,7 @@ if __name__ == '__main__':
 
     try:
         begin_time = datetime.datetime.now()
-        slack_notification('Starting job: '+args.outputdir)
+#        slack_notification('Starting job: '+args.outputdir)
         runningdir = os.path.join(args.outputdir, 'running')
         if os.path.exists(runningdir):
             shutil.rmtree(runningdir)
@@ -356,19 +356,20 @@ if __name__ == '__main__':
             logging.getLogger(__name__).error('Cannot write output to: '+args.outputdir)
             sys.exit(-1)
         groups = get_groups(args.config)
-        pickle_data(hosts, generate_settings(args.config), args.working_dir,
-                    args.outputdir, password, user)
-        run_jobs(hosts, generate_settings(args.config), args.working_dir,
-                 args.outputdir, password, user)
+#        pickle_data(hosts, generate_settings(args.config), args.working_dir,
+#                    args.outputdir, password, user)
+#        run_jobs(hosts, generate_settings(args.config), args.working_dir,
+#                 args.outputdir, password, user)
         make_plots(args.outputdir, groups)
         run_time = datetime.datetime.now() - begin_time
         with open(os.path.join(args.outputdir, 'run_time'), 'w') as ofh:
             ofh.write(str(run_time))
         os.rmdir(runningdir)
-        slack_notification('Job complete: '+args.outputdir)
+#        slack_notification('Job complete: '+args.outputdir)
         if args.email:
             send_notification(args.email, args.outputdir, run_time)
-    except:
-        slack_notification('Job died: '+args.outputdir)
+    except Exception as e:
+        print(e)
+#        slack_notification('Job died: '+args.outputdir)
         raise
 
