@@ -1,13 +1,13 @@
 # corpus options
-pickle  amazon.class.pickle
+pickle  amazon.class.thang.pickle
 corpus  /net/roi/okuda/data/amazon/amazon.txt
 labels  /net/roi/okuda/data/amazon/amazon.binary.response
 
 # filter options
 stopwords   /net/roi/okuda/data/stopwords.txt
-rare    5
-common  30000
-smalldoc    5
+rare    50
+common  40000
+smalldoc    30
 pregenerate YES
 
 # experiment options
