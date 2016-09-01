@@ -381,7 +381,7 @@ if __name__ == '__main__':
 
     try:
         begin_time = datetime.datetime.now()
-#        slack_notification('Starting job: '+args.outputdir)
+        slack_notification('Starting job: '+args.outputdir)
         runningdir = os.path.join(args.outputdir, 'running')
         if os.path.exists(runningdir):
             shutil.rmtree(runningdir)
@@ -395,20 +395,20 @@ if __name__ == '__main__':
             logging.getLogger(__name__).error('Cannot write output to: '+args.outputdir)
             sys.exit(-1)
         groups = get_groups(args.config)
-#        pickle_data(hosts, generate_settings(args.config), args.working_dir,
-#                    args.outputdir, password, user, ssh_key)
-#        run_jobs(hosts, generate_settings(args.config), args.working_dir,
-#                 args.outputdir, password, user, ssh_key)
+        pickle_data(hosts, generate_settings(args.config), args.working_dir,
+                    args.outputdir, password, user, ssh_key)
+        run_jobs(hosts, generate_settings(args.config), args.working_dir,
+                 args.outputdir, password, user, ssh_key)
         make_plots(args.outputdir, groups)
         run_time = datetime.datetime.now() - begin_time
         with open(os.path.join(args.outputdir, 'run_time'), 'w') as ofh:
             ofh.write(str(run_time))
         os.rmdir(runningdir)
-#        slack_notification('Job complete: '+args.outputdir)
+        slack_notification('Job complete: '+args.outputdir)
         if args.email:
             send_notification(args.email, args.outputdir, run_time)
     except Exception as e:
         print(e)
-#        slack_notification('Job died: '+args.outputdir)
+        slack_notification('Job died: '+args.outputdir)
         raise
 
