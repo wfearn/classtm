@@ -54,6 +54,7 @@ def _run():
         with open(runningfile, 'w') as outputfh:
             outputfh.write('running')
         # print('Created running mark')
+        outprefix = os.path.join(trueoutputdir, args.label)
 
         start = time.time()
         input_pickle = os.path.join(args.outputdir,
@@ -85,7 +86,7 @@ def _run():
         init_time = datetime.timedelta(seconds=end-start)
 
         start = time.time()
-        model.train(dataset, train_doc_ids, known_labels)
+        model.train(dataset, train_doc_ids, known_labels, outprefix)
         end = time.time()
         train_time = datetime.timedelta(seconds=end-start)
         # print('Trained model')
@@ -99,7 +100,7 @@ def _run():
         eval_time = datetime.timedelta(seconds=end-start)
         model.cleanup()
 
-        with open(os.path.join(trueoutputdir, args.label), 'wb') as ofh:
+        with open(outprefix+'.results', 'wb') as ofh:
             pickle.dump({'init_time': init_time,
                          'confusion_matrix': confusion_matrix,
                          'train_time': train_time,
