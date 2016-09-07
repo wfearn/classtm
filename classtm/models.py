@@ -1,10 +1,83 @@
 """Models for use in ClassTM"""
+import os
+import subprocess
+
 from sklearn.linear_model import LogisticRegression
 import numpy as np
 
 import activetm.tech.anchor
 import ankura.pipeline
 import classtm.labeled
+
+
+FILE_DIR = os.path.dirname(os.path.abspath(__file__))
+LDA_DIR = os.path.join(FILE_DIR, 'ldac')
+LDAC_EXE = os.path.join(LDA_DIR, 'lda')
+# these are the settings that Nguyen et al. used
+LDAC_SETTINGS = os.path.join(LDA_DIR, 'inf-settings.txt')
+
+
+#pylint:disable-msg=too-few-public-methods
+class LDAHelper:
+    """Helper to get topic mixtures for documents"""
+
+    def __init__(self, topics, varname):
+        """Initialize files necessary to call lda-c
+
+            * topics :: 2D np.array
+                should have shape (vocab size, number of topics)
+            * varname :: String
+                output file name root; note that varname must be less than 86
+                characters in length (or else lda-c will do some strange things)
+        """
+        self.varname = varname
+        if len(varname) >= 86:
+            raise Exception('Output name prefix is too long: '+self.varname)
+        self.datafile = self.varname+'_words.txt'
+        self.output = self.varname+'_out'
+        self.output_gamma = self.output+'-gamma.dat'
+        # .beta file has shape (topics, vocab)
+        topicscopy = topics.T.copy()
+        # lda-c stores topics in log space
+        topicscopy += 0.1e-100
+        #pylint:disable-msg=no-member
+        topicscopy = np.log(topicscopy)
+        np.savetxt(varname+'.beta', topicscopy, fmt='%5.10f')
+        with open(varname+'.other', 'w') as ofh:
+            ofh.write('num_topics '+str(topicscopy.shape[0])+'\n')
+            ofh.write('num_terms '+str(topicscopy.shape[1])+'\n')
+            # Nguyen et al. use an alpha of 0.1:
+            # anchor_python/scripts/create_other_ldac.py
+            ofh.write('alpha 0.1\n')
+
+    def predict_topics(self, docwses):
+        """Call on lda-c to get gammas
+
+            * docwses :: [[int]]
+                the first dimension separates documents; the second dimension
+                separates tokens
+        Assuming that all documents in docwses are non-empty
+        """
+        countses = []
+        for docws in docwses:
+            countses.append(np.bincount(docws))
+        with open(self.datafile, 'w') as ofh:
+            for counts in countses:
+                line = []
+                for i, count in enumerate(counts):
+                    if count > 0:
+                        line.append(str(i)+':'+str(count))
+                line.insert(0, str(len(line)))
+                ofh.write(' '.join(line)+'\n')
+        subprocess.run(
+            [
+                LDAC_EXE,
+                'inf',
+                LDAC_SETTINGS,
+                self.varname,
+                self.datafile,
+                self.output])
+        return np.loadtxt(self.output_gamma)
 
 
 #pylint:disable-msg=too-few-public-methods
@@ -25,15 +98,18 @@ class FreeClassifier:
         self.orderedclasses = classtm.labeled.orderclasses(self.classorder)
 
     def predict(self, features):
-        """Predict class label for features"""
-        bestpos = 0
-        bestscore = np.dot(self.weights[0], features[0])
-        for i, classweights in enumerate(self.weights[1:]):
-            curscore = np.dot(classweights, features[0])
-            if curscore > bestscore:
-                bestpos = i + 1
-                bestscore = curscore
-        return np.array([self.orderedclasses[bestpos]])
+        """Predict class labels for each instance in features
+
+            * features :: 2D np.array
+                has shape (number of instances, topic count)
+        """
+        # dot product calculates score for each label for each instance, where
+        # labels are lined up along the rows and instances are lined up along
+        # the columns
+        scores = np.dot(self.weights, features.T)
+        # axis tells argmax to choose the highest row per column
+        predictions = np.argmax(scores, axis=0)
+        return np.array([self.orderedclasses[pred] for pred in predictions])
 
 
 def build_train_set(dataset, train_doc_ids, knownresp, trainsettype):
@@ -119,10 +195,12 @@ class AbstractClassifyingAnchor:
         self.anchors = None
         self.topics = None
         self.corpus_to_train_vocab = None
+        self.vocabsize = None
         self.classorder = None
+        self.lda = None
         self.predictor = None
 
-    def train(self, dataset, train_doc_ids, knownresp):
+    def train(self, dataset, train_doc_ids, knownresp, varname):
         """Train model
             * dataset :: classtm.labeled.ClassifiedDataset
                 the complete corpus used for experiments
@@ -130,12 +208,16 @@ class AbstractClassifyingAnchor:
                 the documents used for training as index into dataset.titles
             * knownresp :: [?]
                 knownresp[x] is the label for train_doc_ids[x]
+            * varname :: String
+                output file name for calling lda-c (important so that parallel
+                processes don't stomp on each other)
         """
         trainingset, self.corpus_to_train_vocab, _ = \
             build_train_set(dataset,
                             train_doc_ids,
                             knownresp,
                             self.dataset_ctor)
+        self.vocabsize = trainingset.vocab_size
         self.classorder = trainingset.classorder
         pdim = 1000 if trainingset.vocab_size > 1000 else trainingset.vocab_size
         self.anchors = \
@@ -150,15 +232,16 @@ class AbstractClassifyingAnchor:
         self.topics = ankura.topic.recover_topics(trainingset,
                                                   self.anchors,
                                                   self.expgrad_epsilon)
+        self.lda = LDAHelper(self.topics, varname)
         self.predictor = self.classifier(self, trainingset, knownresp)
 
-    def predict(self, tokens):
-        """Predict label"""
-        docws = self._convert_vocab_space(tokens)
-        if len(docws) <= 0:
-            return self.rng.choice(self.classorder)
-        features = self.predict_topics(docws)
-        return self.predictor.predict(features.reshape((1, -1)))[0]
+    def predict(self, tokenses):
+        """Predict labels"""
+        docwses = []
+        for tokens in tokenses:
+            docwses.append(self._convert_vocab_space(tokens))
+        features = self.predict_topics(docwses)
+        return self.predictor.predict(features)
 
     def _convert_vocab_space(self, tokens):
         """Change vocabulary from corpus space to training set space"""
@@ -173,20 +256,33 @@ class AbstractClassifyingAnchor:
         """Cleans up any resources used by this instance"""
         pass
 
-    def predict_topics(self, docws):
-        """Predict topic mixture for docws
+    def predict_topics(self, docwses):
+        """Predict topic mixtures for docwses
 
-        Assuming that docws is in trainingset vocabulary space
+            * docwses :: [[int]]
+                the first dimension separates documents; the second dimension
+                separates tokens
+        Assuming that docwses is in trainingset vocabulary space
         """
-        if len(docws) == 0:
-            return np.array([1.0/self.numtopics] * self.numtopics)
-        result = np.zeros(self.numtopics)
-        for _ in range(self.numsamplesperpredictchain):
-            counts, _ = ankura.topic.predict_topics(self.topics,
-                                                    docws,
-                                                    rng=self.rng)
-            result += counts
-        result /= (len(docws) * self.numsamplesperpredictchain)
+        passon = []
+        empties = []
+        for i, docws in enumerate(docwses):
+            length = len(docws)
+            if length > 0:
+                passon.append(docws)
+            else:
+                empties.append(i)
+        empty_mix = np.array([1.0/self.numtopics] * self.numtopics)
+        topic_mixes = self.lda.predict_topics(passon)
+        result = np.zeros((len(docwses), self.numtopics))
+        added = 0
+        # TODO get code review
+        for i in range(len(docwses)):
+            if len(empties) > 0 and i == empties[added]:
+                result[i:] = empty_mix
+                added += 1
+            else:
+                result[i:] = topic_mixes[i-added]
         return result
 
 
@@ -223,11 +319,11 @@ def build_train_adapter(dataset, train_doc_ids, knownresp):
 
 def logistic_regression(logisticanchor, trainingset, knownresp):
     """Builds trained LogisticRegression"""
-    result = LogisticRegression()
-    features = np.zeros((len(trainingset.titles), logisticanchor.numtopics))
+    docwses = []
     for i in range(len(trainingset.titles)):
-        topic_mixture = logisticanchor.predict_topics(trainingset.doc_tokens(i))
-        features[i, :] = topic_mixture
+        docwses.append(trainingset.doc_tokens(i))
+    result = LogisticRegression()
+    features = logisticanchor.predict_topics(docwses)
     result.fit(features, np.array(knownresp))
     return result
 
