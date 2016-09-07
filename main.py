@@ -224,6 +224,10 @@ def get_stats(accs):
         top_errs.append(np.percentile(accs[key], 75) - np.mean(accs[key]))
         meds.append(np.median(accs[key]))
         means.append(np.mean(accs[key]))
+    print('bot_errs', bot_errs)
+    print('top_errs', top_errs)
+    print('meds', meds)
+    print('means', means)
     return {'bot_errs': bot_errs, 'top_errs': top_errs, 'meds': meds, 'means': means}
 
 
@@ -323,11 +327,23 @@ def make_plots(outputdir, dirs):
     # plot the data
     num_topics = sorted(num_topics.keys())
     # first plot accuracy
-    acc_datas = {'free': free_accuracy, 'log': log_accuracy}
+    acc_datas = {}
+    if free_accuracy:
+        acc_datas['free'] = free_accuracy
+    if log_accuracy:
+        acc_datas['log'] = log_accuracy
+    if not acc_datas:
+        print('No accuracy data collected! Are you using a new model?')
     acc_labels = make_label('Number of Topics', 'Accuracy')
     make_plot(acc_datas, num_topics, acc_labels, outputdir, 'accuracy.pdf', colors)
     # then plot time
-    time_datas = {'free': free_times, 'log': log_times}
+    time_datas = {}
+    if free_times:
+        time_datas['free'] = free_times
+    if log_times:
+        time_datas['log'] = log_times
+    if not time_datas:
+        print('No time data collected! Are you using a new model?')
     time_labels = make_label('Number of Topics', 'Time to Complete')
     make_plot(time_datas, num_topics, time_labels, outputdir, 'times.pdf', colors)
 
@@ -375,7 +391,6 @@ if __name__ == '__main__':
     user = input('Username: ')
     password = getpass.getpass('Password (for ssh or unlocking ssh key, leave blank if no password): ')
     ssh_key = input('Path to private ssh key (ie ~/.ssh/id_rsa) (leave blank if authenticating with password only): ')
-    print(ssh_key)
     if ssh_key == '':
         ssh_key = None
 
