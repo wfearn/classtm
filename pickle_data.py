@@ -11,7 +11,7 @@ import time
 import ankura.label as label
 import ankura.pipeline
 
-from classtm.labeled import ClassifiedDataset, get_labels
+from classtm.labeled import AbstractClassifiedDataset, get_labels
 from activetm import utils
 
 
@@ -42,9 +42,9 @@ def _run():
     if not os.path.exists(os.path.join(args.outputdir, pickle_name)):
         pre_dataset = get_dataset(settings)
         labels, classorder = get_labels(settings['labels'])
-        dataset = ClassifiedDataset(pre_dataset,
-                                    labels,
-                                    classorder)
+        dataset = AbstractClassifiedDataset(pre_dataset,
+                                            labels,
+                                            classorder)
         with open(os.path.join(args.outputdir, pickle_name), 'wb') as ofh:
             pickle.dump(dataset, ofh)
     end = time.time()
