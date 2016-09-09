@@ -276,7 +276,6 @@ class AbstractClassifyingAnchor:
         topic_mixes = self.lda.predict_topics(passon)
         result = np.zeros((len(docwses), self.numtopics))
         added = 0
-        # TODO get code review
         for i in range(len(docwses)):
             if len(empties) > 0 and i == empties[added]:
                 result[i:] = empty_mix
