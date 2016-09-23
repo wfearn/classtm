@@ -1,11 +1,9 @@
 import argparse
 import numpy as np
 import datetime
-from email.mime.text import MIMEText
 import getpass
 import logging
 import os
-import pexpect.pxssh as pxssh
 import pickle
 import shutil
 import subprocess
@@ -177,6 +175,7 @@ def make_plots(outputdir, dirs):
     log_topics = {}
     for d in dirs:
         # pull out the data
+        print(d)
         data = get_data(os.path.join(outputdir, d))
         eval_times = []
         init_times = []
