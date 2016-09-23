@@ -18,7 +18,7 @@ LDAC_SETTINGS = os.path.join(LDA_DIR, 'inf-settings.txt')
 
 
 #pylint:disable-msg=too-few-public-methods
-class LDAHelper:
+class VariationalHelper:
     """Helper to get topic mixtures for documents"""
 
     def __init__(self, topics, varname):
@@ -78,6 +78,44 @@ class LDAHelper:
                 self.datafile,
                 self.output])
         return np.loadtxt(self.output_gamma)
+
+
+class SamplingHelper:
+    """Helper to get topic mixtures for documents"""
+
+    def __init__(self, topics, varname):
+        """Initialize variables necessary to call ankura
+
+            * topics :: 2D np.array
+                should have shape (vocab size, number of topics)
+            * varname :: String
+                output file name root; note that varname must be less than 86
+                characters in length (or else lda-c will do some strange things)
+        """
+        self.topics = topics
+        self.varname = varname
+        self.numsamplesperpredictchain = 5
+
+    def predict_topics(self, docwses):
+        """Call ankura to get topic mixes for all the documents
+         
+            * docwses :: [[int]]
+                the first dimension separates documents; the second dimension
+                separates tokens
+        Assumes that all documents in docwses are non-empty
+        """
+        numtopics = self.topics.shape[1]
+        print(numtopics)
+        topic_mixes = np.zeros((len(docwses), numtopics))
+        for i, docws in enumerate(docwses):
+            result = np.zeros(numtopics)
+            for _ in range(self.numsamplesperpredictchain):
+                counts, _ = ankura.topic.predict_topics(self.topics,
+                                                        docws)
+                result += counts
+            result /= (len(docws) * self.numsamplesperpredictchain)
+            topic_mixes[i,:] = result
+        return topic_mixes
 
 
 #pylint:disable-msg=too-few-public-methods
@@ -200,7 +238,7 @@ class AbstractClassifyingAnchor:
         self.lda = None
         self.predictor = None
 
-    def train(self, dataset, train_doc_ids, knownresp, varname):
+    def train(self, dataset, train_doc_ids, knownresp, varname, lda_helper):
         """Train model
             * dataset :: classtm.labeled.ClassifiedDataset
                 the complete corpus used for experiments
@@ -211,6 +249,9 @@ class AbstractClassifyingAnchor:
             * varname :: String
                 output file name for calling lda-c (important so that parallel
                 processes don't stomp on each other)
+            * lda_helper :: Class
+                used to make an LDA helper (either VariationalHelper or
+                SamplingHelper)
         """
         trainingset, self.corpus_to_train_vocab, _ = \
             build_train_set(dataset,
@@ -232,7 +273,7 @@ class AbstractClassifyingAnchor:
         self.topics = ankura.topic.recover_topics(trainingset,
                                                   self.anchors,
                                                   self.expgrad_epsilon)
-        self.lda = LDAHelper(self.topics, varname)
+        self.lda = lda_helper(self.topics, varname)
         self.predictor = self.classifier(self, trainingset, knownresp)
 
     def predict(self, tokenses):
@@ -276,7 +317,6 @@ class AbstractClassifyingAnchor:
         topic_mixes = self.lda.predict_topics(passon)
         result = np.zeros((len(docwses), self.numtopics))
         added = 0
-        # TODO get code review
         for i in range(len(docwses)):
             if len(empties) > 0 and i == empties[added]:
                 result[i:] = empty_mix
@@ -307,6 +347,13 @@ class FreeClassifyingAnchor(AbstractClassifyingAnchor):
                                                     expgrad_epsilon,
                                                     classtm.labeled.ClassifiedDataset,
                                                     free_classifier)
+
+    def train(self, dataset, train_doc_ids, knownresp, varname):
+        super(FreeClassifyingAnchor, self).train(dataset,
+                                                 train_doc_ids,
+                                                 knownresp,
+                                                 varname,
+                                                 SamplingHelper)
 
 
 def build_train_adapter(dataset, train_doc_ids, knownresp):
@@ -340,6 +387,13 @@ class LogisticAnchor(AbstractClassifyingAnchor):
                                              expgrad_epsilon,
                                              classtm.labeled.SupervisedAnchorDataset,
                                              logistic_regression)
+
+    def train(self, dataset, train_doc_ids, knownresp, varname):
+        super(LogisticAnchor, self).train(dataset,
+                                          train_doc_ids,
+                                          knownresp,
+                                          varname,
+                                          VariationalHelper)
 
 
 
