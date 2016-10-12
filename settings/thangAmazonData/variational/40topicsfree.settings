@@ -5,18 +5,18 @@ labels  /net/roi/okuda/data/amazon/amazon.binary.response
 
 # filter options
 stopwords   /net/roi/okuda/data/stopwords.txt
-rare    50
-common  40000
-smalldoc    30
+rare    5
+common  30000
+smalldoc    5
 pregenerate YES
 
 # experiment options
-group   test
+group   40topicsfree
 seed    531
 testsize    1000
 
 # model options
 model   free
-numtopics   20
+numtopics   40
 expgrad_epsilon 1e-4
-lda_helper  sampling
+lda_helper  variational
