@@ -29,6 +29,15 @@ def partition_data_ids(num_docs, rng, settings):
     return shuffled_doc_ids[:testsize], shuffled_doc_ids[testsize:]
 
 
+def get_lda_helper(lda_type):
+    if lda_type == 'variational':
+        return classtm.models.VariationalHelper
+    elif lda_type == 'sampling':
+        return classtm.models.SamplingHelper
+    else:
+        raise ValueError("No lda_helper of type " + lda_type)
+
+
 #pylint:disable-msg=too-many-locals
 def _run():
     parser = argparse.ArgumentParser(description='Job runner for ClassTM')
@@ -50,6 +59,7 @@ def _run():
     runningdir = os.path.join(args.outputdir, 'running')
     _ensure_dir_exists(runningdir)
     runningfile = os.path.join(runningdir, filename)
+    lda_helper = get_lda_helper(settings['lda_type'])
     try:
         with open(runningfile, 'w') as outputfh:
             outputfh.write('running')
@@ -86,7 +96,7 @@ def _run():
         init_time = datetime.timedelta(seconds=end-start)
 
         start = time.time()
-        model.train(dataset, train_doc_ids, known_labels, outprefix)
+        model.train(dataset, train_doc_ids, known_labels, outprefix, lda_helper)
         end = time.time()
         train_time = datetime.timedelta(seconds=end-start)
         # print('Trained model')

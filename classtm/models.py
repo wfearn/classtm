@@ -348,13 +348,6 @@ class FreeClassifyingAnchor(AbstractClassifyingAnchor):
                                                     classtm.labeled.ClassifiedDataset,
                                                     free_classifier)
 
-    def train(self, dataset, train_doc_ids, knownresp, varname):
-        super(FreeClassifyingAnchor, self).train(dataset,
-                                                 train_doc_ids,
-                                                 knownresp,
-                                                 varname,
-                                                 SamplingHelper)
-
 
 def build_train_adapter(dataset, train_doc_ids, knownresp):
     """Build train set as SupervisedAnchorDataset"""
@@ -387,14 +380,6 @@ class LogisticAnchor(AbstractClassifyingAnchor):
                                              expgrad_epsilon,
                                              classtm.labeled.SupervisedAnchorDataset,
                                              logistic_regression)
-
-    def train(self, dataset, train_doc_ids, knownresp, varname):
-        super(LogisticAnchor, self).train(dataset,
-                                          train_doc_ids,
-                                          knownresp,
-                                          varname,
-                                          VariationalHelper)
-
 
 
 FACTORY = {'logistic': LogisticAnchor,
