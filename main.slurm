@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --time=00:30:00   # walltime
+#SBATCH --time=00:40:00   # walltime
 #SBATCH --ntasks=24   # number of processor cores (i.e. tasks)
 #SBATCH --nodes=1   # number of nodes
 #SBATCH --mem-per-cpu=5G   # memory per CPU core
@@ -23,13 +23,13 @@ export PBS_QUEUE=batch
 export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
 
 # LOAD MODULES, INSERT CODE, AND RUN YOUR PROGRAMS HERE
-if [ -z "$1" ]
+if [ -z "$1" || -z "$2" || -z "$3" ]
   then
-    echo "Argument should be passed as {numtopics}topics{free/log}"
+    echo "Usage: sbatch main.slurm numTopics free/log variational/sampling"
     exit 1
 fi
-settings="${HOME}/classtm/settings/$1.settings"
-outputdir="${HOME}/compute/data/classtmoutput/$1sampling"
+settings="${HOME}/classtm/settings/amazonData/$3/$1topics$2.settings"
+outputdir="/fslhome/cojoco/compute/classtm/amazonSampling/"
 module load python/3/5
 
 . "${HOME}/classtm/ENV/bin/activate"

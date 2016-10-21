@@ -59,7 +59,7 @@ def _run():
     runningdir = os.path.join(args.outputdir, 'running')
     _ensure_dir_exists(runningdir)
     runningfile = os.path.join(runningdir, filename)
-    lda_helper = get_lda_helper(settings['lda_type'])
+    lda_helper = get_lda_helper(settings['lda_helper'])
     try:
         with open(runningfile, 'w') as outputfh:
             outputfh.write('running')

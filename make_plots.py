@@ -21,17 +21,38 @@ from activetm import utils
 '''
 The output from an experiment should take the following form:
 
-    output_directory
-        settings1
-            run1_1
-            run2_1
-            ...
-        settings2
+    sampling
+      settings1free
+        run1_1
+        run2_1
         ...
+      settings2free
+      ...
+      settings1log
+        run1_1
+        run2_1
+        ...
+      settings2log
+      ...
+    variational
+      settings1free
+        run1_1
+        run2_1
+        ...
+      settings2free
+      ...
+      settings1log
+        run1_1
+        run2_1
+        ...
+      settings2log
+      ...
 
-In this way, it gets easier to plot the results, since each settings will make a
-line on the plot, and each line will be aggregate data from multiple runs of the
-same settings.
+This is the format the plotter is expecting. There will be at most four lines
+plotted, two for sampling (one for the logistic classifier, one for the free
+classifier) and two for variational (same as for sampling). The order of free
+and log does not matter, it just looks for "free" or "log" at the end of the
+directory name.
 '''
 
 
@@ -121,7 +142,7 @@ def make_label(xlabel, ylabel):
     return {'xlabel': xlabel, 'ylabel': ylabel}
 
 
-def make_plot(datas, free_topics, log_topics, labels, outputdir, filename, colors):
+def make_plot(datas, free_var_topics, log_var_topics, free_sam_topics, log_sam_topics, labels, outputdir, filename, colors):
     """Makes a single plot with multiple lines
     
     datas: {['free' or 'log']: [float]}
@@ -145,12 +166,18 @@ def make_plot(datas, free_topics, log_topics, labels, outputdir, filename, color
                 max_y = max(max_y, mean + top_err)
         # get the line's name
         name = 'Unknown Classifier'
-        if key == 'free':
-            topics = free_topics
-            name = 'Free Classifier'
-        elif key == 'log':
-            topics = log_topics
-            name = 'Logistic Classifier'
+        if key == 'free_var':
+            topics = free_var_topics
+            name = 'Free Classifier w/ Variational'
+        elif key == 'log_var':
+            topics = log_var_topics
+            name = 'Logistic Classifier w/ Variational'
+        if key == 'free_sam':
+            topics = free_sam_topics
+            name = 'Free Classifier w/ Sampling'
+        elif key == 'log_sam':
+            topics = log_sam_topics
+            name = 'Logistic Classifier w/ Sampling'
         # plot the line
         new_plot.plot(topics,
                   stats['means'],
@@ -165,91 +192,107 @@ def make_plot(datas, free_topics, log_topics, labels, outputdir, filename, color
 
 def make_plots(outputdir, dirs):
     """Makes plots from the data"""
-    colors = plot.get_separate_colors(len(dirs))
+    colors = plot.get_separate_colors(4)
     dirs.sort()
-    free_accuracy = {}
-    log_accuracy = {}
-    free_times = {}
-    log_times = {}
-    free_topics = {}
-    log_topics = {}
+    free_var_accuracy = {}
+    log_var_accuracy = {}
+    free_sam_accuracy = {}
+    log_sam_accuracy = {}
+    free_var_times = {}
+    log_var_times = {}
+    free_sam_times = {}
+    log_sam_times = {}
+    free_var_topics = {}
+    log_var_topics = {}
+    free_sam_topics = {}
+    log_sam_topics = {}
     for d in dirs:
-        # pull out the data
         print(d)
-        data = get_data(os.path.join(outputdir, d))
-        eval_times = []
-        init_times = []
-        train_times = []
-        models = []
-        for datum in data:
-            datum_topicnum = datum['model'].numtopics
-            if type(datum['model']) is classtm.models.FreeClassifyingAnchor:
-                free_topics[datum_topicnum] = 0
-                if datum_topicnum not in free_accuracy:
-                    free_accuracy[datum_topicnum] = []
-                    free_times[datum_topicnum] = []
-                free_accuracy[datum_topicnum].append(get_accuracy(datum))
-                free_times[datum_topicnum].append(get_time(datum))
-            elif type(datum['model']) is classtm.models.LogisticAnchor:
-                log_topics[datum_topicnum] = 0
-                if datum_topicnum not in log_accuracy:
-                    log_accuracy[datum_topicnum] = []
-                    log_times[datum_topicnum] = []
-                log_accuracy[datum_topicnum].append(get_accuracy(datum))
-                log_times[datum_topicnum].append(get_time(datum))
+        if 'variational' in d:
+            # pull out the data
+            data = get_data(os.path.join(outputdir, d))
+            for datum in data:
+                datum_topicnum = datum['model'].numtopics
+                if type(datum['model']) is classtm.models.FreeClassifyingAnchor:
+                    free_var_topics[datum_topicnum] = 0
+                    if datum_topicnum not in free_var_accuracy:
+                        free_var_accuracy[datum_topicnum] = []
+                        free_var_times[datum_topicnum] = []
+                    free_var_accuracy[datum_topicnum].append(get_accuracy(datum))
+                    free_var_times[datum_topicnum].append(get_time(datum))
+                elif type(datum['model']) is classtm.models.LogisticAnchor:
+                    log_var_topics[datum_topicnum] = 0
+                    if datum_topicnum not in log_var_accuracy:
+                        log_var_accuracy[datum_topicnum] = []
+                        log_var_times[datum_topicnum] = []
+                    log_var_accuracy[datum_topicnum].append(get_accuracy(datum))
+                    log_var_times[datum_topicnum].append(get_time(datum))
+        if 'sampling' in d:
+            # pull out the data
+            data = get_data(os.path.join(outputdir, d))
+            for datum in data:
+                datum_topicnum = datum['model'].numtopics
+                if type(datum['model']) is classtm.models.FreeClassifyingAnchor:
+                    free_sam_topics[datum_topicnum] = 0
+                    if datum_topicnum not in free_sam_accuracy:
+                        free_sam_accuracy[datum_topicnum] = []
+                        free_sam_times[datum_topicnum] = []
+                    free_sam_accuracy[datum_topicnum].append(get_accuracy(datum))
+                    free_sam_times[datum_topicnum].append(get_time(datum))
+                elif type(datum['model']) is classtm.models.LogisticAnchor:
+                    log_sam_topics[datum_topicnum] = 0
+                    if datum_topicnum not in log_sam_accuracy:
+                        log_sam_accuracy[datum_topicnum] = []
+                        log_sam_times[datum_topicnum] = []
+                    log_sam_accuracy[datum_topicnum].append(get_accuracy(datum))
+                    log_sam_times[datum_topicnum].append(get_time(datum))
 
     # plot the data
-    free_topics = sorted(free_topics.keys())
-    log_topics = sorted(log_topics.keys())
+    free_var_topics = sorted(free_var_topics.keys())
+    log_var_topics = sorted(log_var_topics.keys())
+    free_sam_topics = sorted(free_sam_topics.keys())
+    log_sam_topics = sorted(log_sam_topics.keys())
     # first plot accuracy
     acc_datas = {}
-    if free_accuracy:
-        acc_datas['free'] = free_accuracy
-    if log_accuracy:
-        acc_datas['log'] = log_accuracy
+    if free_var_accuracy:
+        acc_datas['free_var'] = free_var_accuracy
+    if log_var_accuracy:
+        acc_datas['log_var'] = log_var_accuracy
+    if free_sam_accuracy:
+        acc_datas['free_sam'] = free_sam_accuracy
+    if log_sam_accuracy:
+        acc_datas['log_sam'] = log_sam_accuracy
     if not acc_datas:
         print('No accuracy data collected! Are you using a new model?')
     acc_labels = make_label('Number of Topics', 'Accuracy')
-    make_plot(acc_datas, free_topics, log_topics, acc_labels, outputdir, 'accuracy.pdf', colors)
+    make_plot(acc_datas, free_var_topics, log_var_topics, free_sam_topics, log_sam_topics, acc_labels, outputdir, 'accuracy.pdf', colors)
     # then plot time
     time_datas = {}
-    if free_times:
-        time_datas['free'] = free_times
-    if log_times:
-        time_datas['log'] = log_times
+    if free_var_times:
+        time_datas['free_var'] = free_var_times
+    if log_var_times:
+        time_datas['log_var'] = log_var_times
+    if free_sam_times:
+        time_datas['free_sam'] = free_sam_times
+    if log_sam_times:
+        time_datas['log_sam'] = log_sam_times
     if not time_datas:
         print('No time data collected! Are you using a new model?')
     time_labels = make_label('Number of Topics', 'Time to Complete')
-    make_plot(time_datas, free_topics, log_topics, time_labels, outputdir, 'times.pdf', colors)
-
+    make_plot(time_datas, free_var_topics, log_var_topics, free_sam_topics, log_sam_topics, time_labels, outputdir, 'times.pdf', colors)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Launcher for ActiveTM '
             'experiments')
-    parser.add_argument('working_dir', help='ActiveTM directory '
-            'available to hosts (should be a network path)')
-    parser.add_argument('outputdir', help='directory for output (should be a '
-            'network path)')
+    parser.add_argument('outputdir', help='directory for output')
     args = parser.parse_args()
 
     try:
-        begin_time = datetime.datetime.now()
-        runningdir = os.path.join(args.outputdir, 'running')
-        if os.path.exists(runningdir):
-            shutil.rmtree(runningdir)
-        try:
-            os.makedirs(runningdir)
-        except OSError:
-            pass
         if not os.path.exists(args.outputdir):
             logging.getLogger(__name__).error('Cannot write output to: '+args.outputdir)
             sys.exit(-1)
         groups = get_groups(args.outputdir)
         make_plots(args.outputdir, groups)
-        run_time = datetime.datetime.now() - begin_time
-        with open(os.path.join(args.outputdir, 'run_time'), 'w') as ofh:
-            ofh.write(str(run_time))
-        os.rmdir(runningdir)
     except Exception as e:
         print(e)
         raise

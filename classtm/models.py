@@ -17,6 +17,11 @@ LDAC_EXE = os.path.join(LDA_DIR, 'lda')
 LDAC_SETTINGS = os.path.join(LDA_DIR, 'inf-settings.txt')
 
 
+class LDAHelper:
+    """Here so old data will work, not used"""
+    def __init__(self, topics, varname):
+        pass
+
 #pylint:disable-msg=too-few-public-methods
 class VariationalHelper:
     """Helper to get topic mixtures for documents"""
