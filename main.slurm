@@ -33,7 +33,7 @@ outputdir="/fslhome/cojoco/compute/classtm/amazonSampling/"
 module load python/3/5
 
 . "${HOME}/classtm/ENV/bin/activate"
-for i in {1..24}
+for i in {1..4}
   do
     python3 submain.py $settings $outputdir $i &
   done
