@@ -1,6 +1,7 @@
 """ClassifiedDataset for labeled datasets (classification)"""
 import scipy.sparse
 import numpy as np
+import os
 
 import ankura.pipeline
 
@@ -25,6 +26,20 @@ def get_labels(filename):
     return labels, classorder
 
 
+def get_newsgroups_labels(dataset):
+    """Gets labels for newsgroups from a dataset object"""
+    labels = {}
+    classorder = {}
+    classindex = 0
+    for title, metadatum in zip(dataset.titles, dataset.metadata):
+        label = os.path.split(metadatum['dirname'])[1]
+        if label not in classorder:
+            classorder[label] = classindex
+            classindex += 1
+        labels[title] = label
+    return labels, classorder
+
+
 def orderclasses(classorder):
     """Build list of classes, indexed according to classorder"""
     orderedclasses = [''] * len(classorder)
@@ -39,7 +54,8 @@ class AbstractClassifiedDataset(ankura.pipeline.Dataset):
     def __init__(self, dataset, labels, classorder):
         super(AbstractClassifiedDataset, self).__init__(dataset.docwords,
                                                         dataset.vocab,
-                                                        dataset.titles)
+                                                        dataset.titles,
+                                                        metadata=dataset.metadata)
         self.labels = labels
         self.classorder = classorder
         self.orderedclasses = orderclasses(self.classorder)

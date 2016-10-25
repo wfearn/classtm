@@ -28,8 +28,8 @@ if [ -z "$1" || -z "$2" || -z "$3" ]
     echo "Usage: sbatch main.slurm numTopics free/log variational/sampling"
     exit 1
 fi
-settings="${HOME}/classtm/settings/amazonData/$3/$1topics$2.settings"
-outputdir="/fslhome/cojoco/compute/classtm/amazonSampling/"
+settings="${HOME}/classtm/settings/newsgroups/$3/$1topics$2.settings"
+outputdir="/fslhome/cojoco/compute/classtm/newsgroupsVariational/"
 module load python/3/5
 
 . "${HOME}/classtm/ENV/bin/activate"

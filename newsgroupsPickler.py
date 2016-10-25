@@ -9,21 +9,25 @@ import pickle
 import time
 
 import ankura.label as label
+import ankura.tokenize as tokenize
 import ankura.pipeline
 
-from classtm.labeled import ClassifiedDataset, get_labels
+from classtm.labeled import ClassifiedDataset, get_labels, get_newsgroups_labels
 from activetm import utils
 
 
 def get_dataset(settings):
     """Get dataset"""
     if settings['corpus'].find('*') >= 0:
-        dataset = ankura.pipeline.read_glob(settings['corpus'], labeler=label.text)
+        dataset = ankura.pipeline.read_glob(settings['corpus'],
+                            tokenizer=tokenize.news,
+                            labeler=label.aggregate(label.text,
+                                                    label.title_dirname))
     else:
         dataset = ankura.pipeline.read_file(settings['corpus'], labeler=label.text)
     dataset = ankura.pipeline.filter_stopwords(dataset, settings['englstop'])
     dataset = ankura.pipeline.filter_stopwords(dataset, settings['newsstop'])
-    dataset = ankura.pipeline.combine_words(dataset, settings['namestop'])
+    dataset = ankura.pipeline.combine_words(dataset, settings['namestop'], '<name>')
     dataset = ankura.pipeline.filter_rarewords(dataset, int(settings['rare']))
     dataset = ankura.pipeline.filter_commonwords(dataset, int(settings['common']))
     if settings['pregenerate'] == 'YES':
@@ -42,7 +46,7 @@ def _run():
     pickle_name = utils.get_pickle_name(args.settings)
     if not os.path.exists(os.path.join(args.outputdir, pickle_name)):
         pre_dataset = get_dataset(settings)
-        labels, classorder = get_labels(settings['labels'])
+        labels, classorder = get_newsgroups_labels(pre_dataset)
         dataset = ClassifiedDataset(pre_dataset,
                                     labels,
                                     classorder)
