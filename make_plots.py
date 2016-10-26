@@ -117,28 +117,30 @@ def get_stats(accs):
 
 
 def get_accuracy(datum):
-    true_pos = datum['confusion_matrix']['pos']['pos']
-    true_neg = datum['confusion_matrix']['neg']['neg']
-    false_pos = datum['confusion_matrix']['neg']['pos']
-    false_neg = datum['confusion_matrix']['pos']['neg']
+    """Gets accuracy from the confusion matrix of the datum"""
+    correct = 0
+    incorrect = 0
 
-    d_true = 0
-    d_false = 0
-    d_true += true_pos
-    d_true += true_neg
-    d_false += false_pos
-    d_false += false_neg
-    accuracy = d_true / (d_true + d_false)
+    for class1 in datum['confusion_matrix']:
+        row = datum['confusion_matrix'][class1]
+        for class2 in row:
+            if class1 == class2:
+                correct += row[class2]
+            else:
+                incorrect += row[class2]
+    accuracy = correct / (correct + incorrect)
     return accuracy
 
 
 def get_time(datum):
+    """Gets time taken to run from the datum"""
     time = datum['eval_time'] + datum['init_time'] + datum['train_time']
     time = time.total_seconds()
     return time
 
 
 def make_label(xlabel, ylabel):
+    """Makes a labels object to pass to make_plot"""
     return {'xlabel': xlabel, 'ylabel': ylabel}
 
 
@@ -152,7 +154,6 @@ def make_plot(datas, free_var_topics, log_var_topics, free_sam_topics, log_sam_t
     filename: string
     colors: returned by plot.get_separate_colors(int)
     """
-    print(datas)
     new_plot = plot.Plotter(colors)
     min_y = float('inf')
     max_y = float('-inf')
