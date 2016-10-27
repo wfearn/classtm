@@ -12,7 +12,7 @@ import ankura.label as label
 import ankura.tokenize as tokenize
 import ankura.pipeline
 
-from classtm.labeled import ClassifiedDataset, get_labels, get_newsgroups_labels
+from classtm.labeled import AbstractClassifiedDataset, get_labels, get_newsgroups_labels
 from activetm import utils
 
 
@@ -47,7 +47,7 @@ def _run():
     if not os.path.exists(os.path.join(args.outputdir, pickle_name)):
         pre_dataset = get_dataset(settings)
         labels, classorder = get_newsgroups_labels(pre_dataset)
-        dataset = ClassifiedDataset(pre_dataset,
+        dataset = AbstractClassifiedDataset(pre_dataset,
                                     labels,
                                     classorder)
         with open(os.path.join(args.outputdir, pickle_name), 'wb') as ofh:
