@@ -208,7 +208,6 @@ def make_plots(outputdir, dirs):
     free_sam_topics = {}
     log_sam_topics = {}
     for d in dirs:
-        print(d)
         if 'variational' in d:
             # pull out the data
             data = get_data(os.path.join(outputdir, d))

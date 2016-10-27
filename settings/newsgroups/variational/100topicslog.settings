@@ -16,7 +16,7 @@ seed    531
 testsize    1000
 
 # model options
-model   log
+model   logistic
 numtopics   100
 expgrad_epsilon 1e-4
 lda_helper  variational
