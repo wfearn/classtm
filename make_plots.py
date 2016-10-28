@@ -281,6 +281,7 @@ def make_plots(outputdir, dirs):
     time_labels = make_label('Number of Topics', 'Time to Complete')
     make_plot(time_datas, free_var_topics, log_var_topics, free_sam_topics, log_sam_topics, time_labels, outputdir, 'times.pdf', colors)
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Launcher for ActiveTM '
             'experiments')

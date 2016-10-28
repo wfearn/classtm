@@ -317,13 +317,16 @@ class AbstractClassifyingAnchor:
             if length > 0:
                 passon.append(docws)
             else:
+                print(i, 'appended to empties')
                 empties.append(i)
         empty_mix = np.array([1.0/self.numtopics] * self.numtopics)
         topic_mixes = self.lda.predict_topics(passon)
         result = np.zeros((len(docwses), self.numtopics))
         added = 0
+        print('length of empties:', len(empties))
         for i in range(len(docwses)):
-            if len(empties) > 0 and i == empties[added]:
+            print('trying to get empties[', added, '] at document', i)
+            if len(empties) > 0 and added < len(empties) and i == empties[added]:
                 result[i:] = empty_mix
                 added += 1
             else:
