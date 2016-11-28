@@ -109,7 +109,7 @@ class SupervisedAnchorDataset(AbstractClassifiedDataset):
                 if datum > 0:
                     # count up number of documents with word i
                     total += 1
-                    # tally up number odcuments with class label
+                    # tally up number documents with class label
                     label = self.classorder[self.labels[self.titles[docnum]]]
                     self._cooccurrences[i, orig_width+label] += 1
                 # normalize tally

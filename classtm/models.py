@@ -93,7 +93,11 @@ class FreeClassifier:
                 dictionary of class names that are mapped to corresponding index
                 in weights
         """
-        self.weights = weights
+        # column normalize
+        epsilon = 1e-7
+        modified_weights = weights + epsilon
+        column_sums = modified_weights.sum(axis=0)
+        self.weights = weights / column_sums
         self.classorder = classorder
         self.orderedclasses = classtm.labeled.orderclasses(self.classorder)
 
