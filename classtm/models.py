@@ -136,7 +136,11 @@ class FreeClassifier:
                 dictionary of class names that are mapped to corresponding index
                 in weights
         """
-        self.weights = weights
+        # column normalize
+        epsilon = 1e-7
+        modified_weights = weights + epsilon
+        column_sums = modified_weights.sum(axis=0)
+        self.weights = weights / column_sums
         self.classorder = classorder
         self.orderedclasses = classtm.labeled.orderclasses(self.classorder)
 
@@ -317,15 +321,12 @@ class AbstractClassifyingAnchor:
             if length > 0:
                 passon.append(docws)
             else:
-                print(i, 'appended to empties')
                 empties.append(i)
         empty_mix = np.array([1.0/self.numtopics] * self.numtopics)
         topic_mixes = self.lda.predict_topics(passon)
         result = np.zeros((len(docwses), self.numtopics))
         added = 0
-        print('length of empties:', len(empties))
         for i in range(len(docwses)):
-            print('trying to get empties[', added, '] at document', i)
             if len(empties) > 0 and added < len(empties) and i == empties[added]:
                 result[i:] = empty_mix
                 added += 1

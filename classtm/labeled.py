@@ -69,16 +69,30 @@ class ClassifiedDataset(AbstractClassifiedDataset):
         super(ClassifiedDataset, self).__init__(dataset, labels, classorder)
         # add pseudo labels if necessary
         if not isinstance(dataset, ClassifiedDataset):
-            origvocabsize = len(self._vocab)
+            self.origvocabsize = len(self._vocab)
             self._vocab = np.append(self._vocab, self.orderedclasses)
             tmp = scipy.sparse.lil_matrix((len(self._vocab), len(self.titles)),
                                           dtype=self._docwords.dtype)
-            tmp[:origvocabsize, :] = self._docwords
+            tmp[:self.origvocabsize, :] = self._docwords
             for docnum, title in enumerate(self.titles):
                 label = self.labels[title]
-                tmp[origvocabsize+self.classorder[label], docnum] = 1
+                tmp[self.origvocabsize+self.classorder[label], docnum] = 1
             self._docwords = tmp.tocsc()
         # when compute_cooccurrences gets called, we should get the Q we want
+
+    def doc_tokens(self, doc_id, rng=np.random):
+        if doc_id in self._tokens:
+            return self._tokens[doc_id]
+
+        token_ids, _, counts = scipy.sparse.find(self._docwords[:, doc_id])
+        tokens = []
+        for token_id, count in zip(token_ids, counts):
+            if token_id < self.origvocabsize:
+                tokens.extend([token_id] * count)
+        rng.shuffle(tokens)
+
+        self._tokens[doc_id] = tokens
+        return tokens
 
 
 class SupervisedAnchorDataset(AbstractClassifiedDataset):
@@ -111,7 +125,7 @@ class SupervisedAnchorDataset(AbstractClassifiedDataset):
                 if datum > 0:
                     # count up number of documents with word i
                     total += 1
-                    # tally up number odcuments with class label
+                    # tally up number documents with class label
                     label = self.classorder[self.labels[self.titles[docnum]]]
                     self._cooccurrences[i, orig_width+label] += 1
                 # normalize tally

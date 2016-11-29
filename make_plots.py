@@ -21,6 +21,7 @@ from activetm import utils
 '''
 The output from an experiment should take the following form:
 
+<<<<<<< HEAD
     sampling
       settings1free
         run1_1
