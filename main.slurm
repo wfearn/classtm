@@ -1,10 +1,10 @@
 #!/bin/bash
 
-#SBATCH --time=00:40:00   # walltime
+#SBATCH --time=00:90:00   # walltime
 #SBATCH --ntasks=24   # number of processor cores (i.e. tasks)
 #SBATCH --nodes=1   # number of nodes
 #SBATCH --mem-per-cpu=5G   # memory per CPU core
-#SBATCH -J "Free Benchmark"   # job name
+#SBATCH -J "Newsgroups Bench"   # job name
 #SBATCH -p m8
 #SBATCH --mail-user=cojoco@gmail.com   # email address
 #SBATCH --mail-type=BEGIN
@@ -29,11 +29,11 @@ if [ -z "$1" || -z "$2" || -z "$3" ]
     exit 1
 fi
 settings="${HOME}/classtm/settings/newsgroups/$3/$1topics$2.settings"
-outputdir="/fslhome/cojoco/compute/classtm/newsgroupsVariational/"
+outputdir="/fslhome/cojoco/compute/classtm/newsgroups/$3/"
 module load python/3/5
 
 . "${HOME}/classtm/ENV/bin/activate"
-for i in {1..4}
+for i in {1..5}
   do
     python3 submain.py $settings $outputdir $i &
   done
