@@ -27,12 +27,35 @@ def get_labels(filename):
 
 
 def get_newsgroups_labels(dataset):
-    """Gets labels for newsgroups from a dataset object"""
+    """Gets coarse class labels for newsgroups from a dataset object"""
+    complabel = ['comp.graphics', 'comp.os.ms-windows.misc',
+              'comp.sys.ibm.pc.hardware', 'comp.sys.mac.hardware',
+              'comp.windows.x']
+    reclabel = ['rec.autos', 'rec.motorcycles', 'rec.sport.baseball',
+              'rec.sport.hockey']
+    scilabel = ['sci.crypt', 'sci.electronics', 'sci.med', 'sci.space']
+    forsale = ['misc.forsale']
+    polilabel = ['talk.politics.guns', 'talk.politics.mideast',
+              'talk.politics.misc']
+    rellabel = ['talk.religion.misc', 'alt.atheism', 'soc.religion.christian']
     labels = {}
     classorder = {}
     classindex = 0
     for title, metadatum in zip(dataset.titles, dataset.metadata):
-        label = os.path.split(metadatum['dirname'])[1]
+        pre_label = os.path.split(metadatum['dirname'])[1]
+        label = None
+        if pre_label in complabel:
+            label = 'computer'
+        elif pre_label in reclabel:
+            label = 'recreation'
+        elif pre_label in scilabel:
+            label = 'science'
+        elif pre_label in forsale:
+            label = 'forsale'
+        elif pre_label in polilabel:
+            label = 'politics'
+        elif pre_label in rellabel:
+            label = 'religion'
         if label not in classorder:
             classorder[label] = classindex
             classindex += 1
