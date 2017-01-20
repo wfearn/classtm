@@ -52,7 +52,7 @@ def _run():
 
     settings = utils.parse_settings(args.settings)
     # print('Parsed settings')
-    trueoutputdir = os.path.join(args.outputdir, settings['group'])
+    trueoutputdir = os.path.join(args.outputdir, settings['anchors_file'][-8:])
     _ensure_dir_exists(trueoutputdir)
     # print('Ensured true output directory exists')
     filename = socket.gethostname()+'.'+str(os.getpid())
@@ -96,7 +96,9 @@ def _run():
         init_time = datetime.timedelta(seconds=end-start)
 
         start = time.time()
-        model.train(dataset, train_doc_ids, known_labels, outprefix, lda_helper)
+        anchors_file = settings['anchors_file']
+        model.train(dataset, train_doc_ids, known_labels, outprefix, lda_helper,
+                    anchors_file)
         end = time.time()
         train_time = datetime.timedelta(seconds=end-start)
         # print('Trained model')

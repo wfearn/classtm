@@ -1,0 +1,23 @@
+# corpus options
+pickle  newsgroups.coarse.class.pickle
+corpus  /local/cojoco/data/newsgroups-dedup/*/*
+
+# filter options
+englstop  /local/cojoco/data/stopwords/english.txt
+newsstop  /local/cojoco/data/stopwords/newsgroups.txt
+namestop  /local/cojoco/data/stopwords/malenames.txt
+rare    100
+common  1500
+pregenerate YES
+
+# experiment options
+group   20topicslog
+seed    531
+testsize    1000
+
+# model options
+model   logistic
+numtopics   20
+expgrad_epsilon 1e-4
+lda_helper  variational
+anchors_file  /fslhome/cojoco/compute/classtm/anchorsNewsgroups/xa4zmtb_

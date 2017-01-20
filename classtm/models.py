@@ -247,7 +247,7 @@ class AbstractClassifyingAnchor:
         self.lda = None
         self.predictor = None
 
-    def train(self, dataset, train_doc_ids, knownresp, varname, lda_helper):
+    def train(self, dataset, train_doc_ids, knownresp, varname, lda_helper, anchors_file):
         """Train model
             * dataset :: classtm.labeled.ClassifiedDataset
                 the complete corpus used for experiments
@@ -261,6 +261,8 @@ class AbstractClassifyingAnchor:
             * lda_helper :: Class
                 used to make an LDA helper (either VariationalHelper or
                 SamplingHelper)
+            * anchors_file :: String
+                name of the file containing the anchors this model should use
         """
         trainingset, self.corpus_to_train_vocab, _ = \
             build_train_set(dataset,
@@ -277,8 +279,7 @@ class AbstractClassifyingAnchor:
 #                                                             0.015 * len(trainingset.titles)),
 #                                              project_dim=pdim)
         # pull user-made anchors from a file of anchors
-        filename = '/local/cojoco/classtmAnchors/7fpr9uk7'
-        user_file = json.load(open(filename, 'r'))
+        user_file = json.load(open(anchors_file, 'r'))
         # we only want the last group of anchors that were chosen
         user_anchors = user_file[len(user_file)-1]['anchors']
         self.anchors = ankura.anchor.multiword_anchors(trainingset, user_anchors)
