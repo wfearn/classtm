@@ -1,6 +1,7 @@
 """Models for use in ClassTM"""
 import os
 import subprocess
+import json
 
 from sklearn.linear_model import LogisticRegression
 import numpy as np
@@ -110,7 +111,6 @@ class SamplingHelper:
         Assumes that all documents in docwses are non-empty
         """
         numtopics = self.topics.shape[1]
-        print(numtopics)
         topic_mixes = np.zeros((len(docwses), numtopics))
         for i, docws in enumerate(docwses):
             result = np.zeros(numtopics)
@@ -270,18 +270,27 @@ class AbstractClassifyingAnchor:
         self.vocabsize = trainingset.vocab_size
         self.classorder = trainingset.classorder
         pdim = 1000 if trainingset.vocab_size > 1000 else trainingset.vocab_size
-        self.anchors = \
-            ankura.anchor.gramschmidt_anchors(trainingset,
-                                              self.numtopics,
-                                              id_cands_maker(len(self.classorder),
-                                                             0.015 * len(trainingset.titles)),
-                                              project_dim=pdim)
+#        self.anchors = \
+#            ankura.anchor.gramschmidt_anchors(trainingset,
+#                                              self.numtopics,
+#                                              id_cands_maker(len(self.classorder),
+#                                                             0.015 * len(trainingset.titles)),
+#                                              project_dim=pdim)
+        # pull user-made anchors from a file of anchors
+        filename = '/local/cojoco/classtmAnchors/7fpr9uk7'
+        user_file = json.load(open(filename, 'r'))
+        # we only want the last group of anchors that were chosen
+        user_anchors = user_file[len(user_file)-1]['anchors']
+        self.anchors = ankura.anchor.multiword_anchors(trainingset, user_anchors)
         # relying on fact that recover_topics goes through all rows of Q, the
         # cooccurrence matrix in trainingset
         # self.topics has shape (vocabsize, numtopics)
         self.topics = ankura.topic.recover_topics(trainingset,
                                                   self.anchors,
                                                   self.expgrad_epsilon)
+        # Connor added this because numtopics is determined at runtime now,
+        #   and no longer stored in the settings file.
+        self.numtopics = len(self.anchors)
         self.lda = lda_helper(self.topics, varname)
         self.predictor = self.classifier(self, trainingset, knownresp)
 
