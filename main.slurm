@@ -25,7 +25,7 @@ export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
 # LOAD MODULES, INSERT CODE, AND RUN YOUR PROGRAMS HERE
 if [ -z "$1" || -z "$2" || -z "$3" ]
   then
-    echo "Usage: sbatch main.slurm anchors_file free/log variational/sampling"
+    echo "Usage: sbatch main.slurm {anchors_file OR num_topics} free/log variational/sampling"
     exit 1
 fi
 settings="${HOME}/classtm/settings/coarseNewsgroups/$3/$1topics$2.settings"

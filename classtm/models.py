@@ -5,6 +5,8 @@ import json
 
 from sklearn.linear_model import LogisticRegression
 import numpy as np
+import scipy
+from scipy.sparse import csc_matrix
 
 import activetm.tech.anchor
 import ankura.pipeline
@@ -127,11 +129,14 @@ class SamplingHelper:
 class FreeClassifier:
     """Classifier that came for free as part of training FreeClassifyingAnchor"""
 
-    def __init__(self, weights, classorder):
+    def __init__(self, weights, class_given_word, classorder):
         """Initialize FreeClassifier instance with all the information it needs
             * weights :: 2D np.array
                 one row for each class, signifying the linear combination of
                 topics that represent a class
+            * class_given_word :: 2D np.array
+                expected shape is (number of classes, vocab size), this is the
+                probability of each class given each word
             * classorder :: {'class': int}
                 dictionary of class names that are mapped to corresponding index
                 in weights
@@ -143,19 +148,28 @@ class FreeClassifier:
         self.weights = weights / column_sums
         self.classorder = classorder
         self.orderedclasses = classtm.labeled.orderclasses(self.classorder)
+        # Added by Connor to get word features working
+        self.class_given_word = class_given_word
 
-    def predict(self, features):
+    def predict(self, features, doc_words):
         """Predict class labels for each instance in features
 
             * features :: 2D np.array
                 has shape (number of instances, topic count)
+            * doc_words :: 2D scipy.sparse.csc_matrix
+                has shape (vocab size, number of documents)
         """
         # dot product calculates score for each label for each instance, where
         # labels are lined up along the rows and instances are lined up along
         # the columns
-        scores = np.dot(self.weights, features.T)
+        topic_score = np.dot(self.weights, features.T)
+        topic_score = topic_score / topic_score.sum(axis=0)
+        word_score = csc_matrix.dot(self.class_given_word, doc_words)
+        word_score_sum = word_score.sum(axis=0)
+        word_score = word_score / word_score_sum
+        score = topic_score + word_score
         # axis tells argmax to choose the highest row per column
-        predictions = np.argmax(scores, axis=0)
+        predictions = np.argmax(score, axis=0)
         return np.array([self.orderedclasses[pred] for pred in predictions])
 
 
@@ -263,6 +277,7 @@ class AbstractClassifyingAnchor:
                 SamplingHelper)
             * anchors_file :: String
                 name of the file containing the anchors this model should use
+                or None if gram-schmidt anchors should be used
         """
         trainingset, self.corpus_to_train_vocab, _ = \
             build_train_set(dataset,
@@ -272,26 +287,27 @@ class AbstractClassifyingAnchor:
         self.vocabsize = trainingset.vocab_size
         self.classorder = trainingset.classorder
         pdim = 1000 if trainingset.vocab_size > 1000 else trainingset.vocab_size
-#        self.anchors = \
-#            ankura.anchor.gramschmidt_anchors(trainingset,
-#                                              self.numtopics,
-#                                              id_cands_maker(len(self.classorder),
-#                                                             0.015 * len(trainingset.titles)),
-#                                              project_dim=pdim)
-        # pull user-made anchors from a file of anchors
-        user_file = json.load(open(anchors_file, 'r'))
-        # we only want the last group of anchors that were chosen
-        user_anchors = user_file[len(user_file)-1]['anchors']
-        self.anchors = ankura.anchor.multiword_anchors(trainingset, user_anchors)
+        if anchors_file is None:
+            self.anchors = \
+                ankura.anchor.gramschmidt_anchors(trainingset,
+                                                  self.numtopics,
+                                                  id_cands_maker(len(self.classorder),
+                                                                 0.015 * len(trainingset.titles)),
+                                                  project_dim=pdim)
+        else:
+            # pull user-made anchors from a JSON file of anchors
+            user_file = json.load(open(anchors_file, 'r'))
+            # we only want the last group of anchors that were chosen
+            user_anchors = user_file[len(user_file)-1]['anchors']
+            self.anchors = ankura.anchor.multiword_anchors(trainingset, user_anchors)
+            # numtopics is determined at runtime when using user anchors
+            self.numtopics = len(self.anchors)
         # relying on fact that recover_topics goes through all rows of Q, the
         # cooccurrence matrix in trainingset
         # self.topics has shape (vocabsize, numtopics)
         self.topics = ankura.topic.recover_topics(trainingset,
                                                   self.anchors,
                                                   self.expgrad_epsilon)
-        # Connor added this because numtopics is determined at runtime now,
-        #   and no longer stored in the settings file.
-        self.numtopics = len(self.anchors)
         self.lda = lda_helper(self.topics, varname)
         self.predictor = self.classifier(self, trainingset, knownresp)
 
@@ -348,7 +364,9 @@ class AbstractClassifyingAnchor:
 def free_classifier(freeclassifyinganchor, trainingset, _):
     """Builds a trained FreeClassifier"""
     classcount = len(trainingset.classorder)
-    return FreeClassifier(freeclassifyinganchor.topics[-classcount:],
+    class_topic_weights = freeclassifyinganchor.topics[-classcount:]
+    class_given_word = trainingset.Q[:-classcount, -classcount:].T
+    return FreeClassifier(class_topic_weights, class_given_word,
                           freeclassifyinganchor.classorder)
 
 
@@ -366,6 +384,18 @@ class FreeClassifyingAnchor(AbstractClassifyingAnchor):
                                                     expgrad_epsilon,
                                                     classtm.labeled.ClassifiedDataset,
                                                     free_classifier)
+
+    def predict(self, tokenses):
+        """Predict labels"""
+        docwses = []
+        doc_words = scipy.sparse.dok_matrix((self.vocabsize-len(self.classorder), len(tokenses)))
+        for i, tokens in enumerate(tokenses):
+            real_vocab = self._convert_vocab_space(tokens)
+            docwses.append(real_vocab)
+            for token in real_vocab:
+                doc_words[token, i] += 1
+        features = self.predict_topics(docwses)
+        return self.predictor.predict(features, doc_words.tocsc())
 
 
 def build_train_adapter(dataset, train_doc_ids, knownresp):

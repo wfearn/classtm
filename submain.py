@@ -52,7 +52,7 @@ def _run():
 
     settings = utils.parse_settings(args.settings)
     # print('Parsed settings')
-    trueoutputdir = os.path.join(args.outputdir, settings['anchors_file'][-8:])
+    trueoutputdir = os.path.join(args.outputdir, settings['group'])
     _ensure_dir_exists(trueoutputdir)
     # print('Ensured true output directory exists')
     filename = socket.gethostname()+'.'+str(os.getpid())
