@@ -106,7 +106,6 @@ class SamplingHelper:
 
     def predict_topics(self, docwses):
         """Call ankura to get topic mixes for all the documents
-         
             * docwses :: [[int]]
                 the first dimension separates documents; the second dimension
                 separates tokens

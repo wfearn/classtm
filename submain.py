@@ -96,7 +96,7 @@ def _run():
         init_time = datetime.timedelta(seconds=end-start)
 
         start = time.time()
-        anchors_file = settings['anchors_file']
+        anchors_file = settings.get('anchors_file')
         model.train(dataset, train_doc_ids, known_labels, outprefix, lda_helper,
                     anchors_file)
         end = time.time()
