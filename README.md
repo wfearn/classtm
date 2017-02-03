@@ -11,3 +11,13 @@ pip install -r requirements.txt
 ```
 
 in the `ClassTM` directory.
+
+## Settings
+
+Two lines have been added to the settings file.
+
+The first is 'anchors\_file  {name of anchors file}'. This is optional, and only
+needs to be in the file if user-defined anchors are being used.
+
+The second is 'lda\_helper  {variational, sampling}'. This defines whether LDA
+will be done using variational or sampling methods.
