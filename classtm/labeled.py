@@ -1,7 +1,8 @@
 """ClassifiedDataset for labeled datasets (classification)"""
-import scipy.sparse
-import numpy as np
 import os
+
+import numpy as np
+import scipy.sparse
 
 import ankura.pipeline
 
@@ -29,14 +30,14 @@ def get_labels(filename):
 def get_newsgroups_labels(dataset):
     """Gets coarse class labels for newsgroups from a dataset object"""
     complabel = ['comp.graphics', 'comp.os.ms-windows.misc',
-              'comp.sys.ibm.pc.hardware', 'comp.sys.mac.hardware',
-              'comp.windows.x']
+                 'comp.sys.ibm.pc.hardware', 'comp.sys.mac.hardware',
+                 'comp.windows.x']
     reclabel = ['rec.autos', 'rec.motorcycles', 'rec.sport.baseball',
-              'rec.sport.hockey']
+                'rec.sport.hockey']
     scilabel = ['sci.crypt', 'sci.electronics', 'sci.med', 'sci.space']
     forsale = ['misc.forsale']
     polilabel = ['talk.politics.guns', 'talk.politics.mideast',
-              'talk.politics.misc']
+                 'talk.politics.misc']
     rellabel = ['talk.religion.misc', 'alt.atheism', 'soc.religion.christian']
     labels = {}
     classorder = {}
@@ -146,11 +147,39 @@ class SupervisedAnchorDataset(AbstractClassifiedDataset):
             for docnum, datum in zip(indices[indptr[i]:indptr[i+1]],
                                      data[indptr[i]:indptr[i+1]]):
                 if datum > 0:
-                    # count up number of documents with word i
-                    total += 1
                     # tally up number documents with class label
-                    label = self.classorder[self.labels[self.titles[docnum]]]
-                    self._cooccurrences[i, orig_width+label] += 1
+                    label_string = self.labels.get(self.titles[docnum])
+                    if label_string:
+                        # count up number of labeled documents with word i
+                        total += 1
+                        label = self.classorder[label_string]
+                        self._cooccurrences[i, orig_width+label] += 1
                 # normalize tally
-                self._cooccurrences[i, :-classcount] /= total
+                self._cooccurrences[i, -classcount:] /= total
+
+
+class IncrementalSupervisedAnchorDataset(SupervisedAnchorDataset):
+    """Dataset implementing supervised anchor words but for use with
+    incrementally labeled data
+    """
+
+    def __init__(self, dataset):
+        super(IncrementalSupervisedAnchorDataset, self).__init__(dataset,
+                                                                 {},
+                                                                 {})
+
+    def label_document(self, title, label):
+        """Label a document in this corpus
+
+            * title :: str
+                title of document
+            * label :: str
+                label of document
+        Assumes that title is in corpus
+        """
+        self.labels[title] = label
+        if label not in self.classorder:
+            self.classorder[label] = len(self.classorder)
+            self.orderedclasses = orderclasses(self.classorder)
+        self._cooccurrences = None
 
