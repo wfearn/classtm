@@ -12,7 +12,7 @@ import ankura.label as label
 import ankura.tokenize as tokenize
 import ankura.pipeline
 
-from classtm.labeled import AbstractClassifiedDataset, get_labels, get_newsgroups_labels
+from classtm.labeled import AbstractClassifiedDataset, get_newsgroups_labels
 from activetm import utils
 
 

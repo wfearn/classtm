@@ -13,18 +13,30 @@ def get_labels(filename):
     Returns examples paired with label and list of different labels
     """
     labels = {}
-    classorder = {}
-    classindex = 0
     with open(filename) as ifh:
         for line in ifh:
             line = line.strip()
             if line:
                 example, label = line.split()
-                if label not in classorder:
-                    classorder[label] = classindex
-                    classindex += 1
                 labels[example] = label
-    return labels, classorder
+    return labels
+
+
+def get_classorder(labels):
+    """Builds classorder from labels (lexicographic order)
+
+        * labels :: {str: str}
+            dictionary of document title associated with document label
+    """
+    tmp = {}
+    for _, label in labels.items():
+        if label not in tmp:
+            tmp[label] = True
+    sorted_labels = sorted(tmp.keys())
+    classorder = {}
+    for i, label in enumerate(sorted_labels):
+        classorder[label] = i
+    return classorder
 
 
 def get_newsgroups_labels(dataset):
@@ -167,6 +179,9 @@ class IncrementalSupervisedAnchorDataset(SupervisedAnchorDataset):
         super(IncrementalSupervisedAnchorDataset, self).__init__(dataset,
                                                                  {},
                                                                  {})
+        self.titlesorder = {}
+        for i, title in enumerate(self.titles):
+            self.titlesorder[title] = i
 
     def label_document(self, title, label):
         """Label a document in this corpus
