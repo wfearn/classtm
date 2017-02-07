@@ -166,7 +166,8 @@ class SupervisedAnchorDataset(AbstractClassifiedDataset):
                         total += 1
                         label = self.classorder[label_string]
                         self._cooccurrences[i, orig_width+label] += 1
-                # normalize tally
+            # normalize tally
+            if total > 0:
                 self._cooccurrences[i, -classcount:] /= total
 
 
