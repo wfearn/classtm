@@ -74,9 +74,9 @@ def _run():
         end = time.time()
         init_time = datetime.timedelta(seconds=end-start)
 
-        startlabeled = settings['startlabeled']
-        endlabeled = settings['endlabeled']
-        increment = settings['increment']
+        startlabeled = int(settings['startlabeled'])
+        endlabeled = int(settings['endlabeled'])
+        increment = int(settings['increment'])
         incrementaldataset = \
             classtm.labeled.IncrementalSupervisedAnchorDataset(dataset)
         for i, trainid in enumerate(train_doc_ids):
@@ -119,3 +119,6 @@ def _run():
             pickle.dump(results, ofh)
     finally:
         os.remove(runningfile)
+
+if __name__ == '__main__':
+    _run()
