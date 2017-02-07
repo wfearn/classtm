@@ -1,4 +1,7 @@
-"""Runs classification experiment"""
+"""Runs classification experiment
+
+Assumes that pickled dataset is a(n) AbstractClassifiedDataset
+"""
 import argparse
 import datetime
 import os
@@ -12,7 +15,7 @@ import classtm.models
 from classtm import evaluate
 
 
-def _ensure_dir_exists(dirname):
+def ensure_dir_exists(dirname):
     """Ensure that directory exists"""
     if not os.path.exists(dirname):
         try:
@@ -30,6 +33,7 @@ def partition_data_ids(num_docs, rng, settings):
 
 
 def get_lda_helper(lda_type):
+    """Get topic inference algorithm"""
     if lda_type == 'variational':
         return classtm.models.VariationalHelper
     elif lda_type == 'sampling':
@@ -53,11 +57,11 @@ def _run():
     settings = utils.parse_settings(args.settings)
     # print('Parsed settings')
     trueoutputdir = os.path.join(args.outputdir, settings['group'])
-    _ensure_dir_exists(trueoutputdir)
+    ensure_dir_exists(trueoutputdir)
     # print('Ensured true output directory exists')
     filename = socket.gethostname()+'.'+str(os.getpid())
     runningdir = os.path.join(args.outputdir, 'running')
-    _ensure_dir_exists(runningdir)
+    ensure_dir_exists(runningdir)
     runningfile = os.path.join(runningdir, filename)
     lda_helper = get_lda_helper(settings['lda_helper'])
     try:

@@ -120,7 +120,7 @@ class SamplingHelper:
                                                         docws)
                 result += counts
             result /= (len(docws) * self.numsamplesperpredictchain)
-            topic_mixes[i,:] = result
+            topic_mixes[i, :] = result
         return topic_mixes
 
 
@@ -416,6 +416,23 @@ def logistic_regression(logisticanchor, trainingset, knownresp):
     return result
 
 
+def incremental_logistic_regression(logisticanchor, trainingset):
+    """Builds trained LogisticRegression for partially labeled corpus
+
+        * logisticanchor :: IncrementalLogisticAnchor
+        * trainingset :: IncrementalSupervisedAnchorDataset
+    """
+    docwses = []
+    knownresp = []
+    for title, label in trainingset.labels.items():
+        docwses.append(trainingset.doc_tokens(trainingset.titlesorder[title]))
+        knownresp.append(label)
+    result = LogisticRegression()
+    features = logisticanchor.predict_topics(docwses)
+    result.fit(features, np.array(knownresp))
+    return result
+
+
 class LogisticAnchor(AbstractClassifyingAnchor):
     """Algorithm that produces a model for classification tasks
 
@@ -430,8 +447,68 @@ class LogisticAnchor(AbstractClassifyingAnchor):
                                              logistic_regression)
 
 
+class IncrementalLogisticAnchor(AbstractClassifyingAnchor):
+    """LogisticAnchor with incrementally labeled corpus"""
+
+    def __init__(self, rng, numtopics, expgrad_epsilon):
+        super(IncrementalLogisticAnchor, self).__init__(rng,
+                                                        numtopics,
+                                                        expgrad_epsilon,
+                                                        None,
+                                                        None)
+
+    def train(self, dataset, varname, lda_helper, anchors_file):
+        """Train model
+            * dataset :: classtm.labeled.IncrementalSupervisedAnchorDataset
+                the corpus used for experiments
+            * varname :: String
+                output file name for calling lda-c (important so that parallel
+                processes don't stomp on each other)
+            * lda_helper :: Class
+                used to make an LDA helper (either VariationalHelper or
+                SamplingHelper)
+            * anchors_file :: String
+                name of the file containing the anchors this model should use
+                or None if gram-schmidt anchors should be used
+        """
+        if isinstance(dataset, classtm.labeled.ClassifiedDataset):
+            self.corpus_to_train_vocab = list(range(len(dataset.origvocabsize)))
+        else:
+            self.corpus_to_train_vocab = list(range(len(dataset.vocab)))
+        trainingset = dataset
+        self.vocabsize = trainingset.vocab_size
+        self.classorder = trainingset.classorder
+        pdim = 1000 if trainingset.vocab_size > 1000 else trainingset.vocab_size
+        if anchors_file is None:
+            # assumes that trainingset.Q has
+            # len(self.corpus_to_train_vocab)+len(self.classorder) columns
+            self.anchors = \
+                ankura.anchor.gramschmidt_anchors(trainingset,
+                                                  self.numtopics,
+                                                  id_cands_maker(len(self.classorder),
+                                                                 0.015 * len(trainingset.titles)),
+                                                  project_dim=pdim)
+        else:
+            # pull user-made anchors from a JSON file of anchors
+            user_file = json.load(open(anchors_file, 'r'))
+            # we only want the last group of anchors that were chosen
+            user_anchors = user_file[len(user_file)-1]['anchors']
+            self.anchors = ankura.anchor.multiword_anchors(trainingset, user_anchors)
+            # numtopics is determined at runtime when using user anchors
+            self.numtopics = len(self.anchors)
+        # relying on fact that recover_topics goes through all rows of Q, the
+        # cooccurrence matrix in trainingset
+        # self.topics has shape (vocabsize, numtopics)
+        self.topics = ankura.topic.recover_topics(trainingset,
+                                                  self.anchors,
+                                                  self.expgrad_epsilon)
+        self.lda = lda_helper(self.topics, varname)
+        self.predictor = incremental_logistic_regression(self, trainingset)
+
+
 FACTORY = {'logistic': LogisticAnchor,
-           'free': FreeClassifyingAnchor}
+           'free': FreeClassifyingAnchor,
+           'inclog': IncrementalLogisticAnchor}
 
 
 def build(rng, settings):
