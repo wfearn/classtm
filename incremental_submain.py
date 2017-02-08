@@ -85,7 +85,8 @@ def _run():
                 incrementaldataset.label_document(title,
                                                   dataset.labels[title])
         results = []
-        while len(incrementaldataset.labels) < endlabeled:
+        labeled_count = startlabeled
+        while len(incrementaldataset.labels) <= endlabeled:
             start = time.time()
             anchors_file = settings.get('anchors_file')
             model.train(incrementaldataset, outprefix,
@@ -103,6 +104,7 @@ def _run():
             eval_time = datetime.timedelta(seconds=end-start)
             results.append({'init_time': init_time,
                             'confusion_matrix': confusion_matrix,
+                            'labeled_count': labeled_count,
                             'train_time': train_time,
                             'eval_time': eval_time,
                             'model': model})
@@ -110,6 +112,7 @@ def _run():
                 break
             for i, trainid in enumerate(train_doc_ids[len(incrementaldataset.labels):]):
                 if i < increment:
+                    labeled_count += 1
                     title = dataset.titles[trainid]
                     incrementaldataset.label_document(title,
                                                       dataset.labels[title])
