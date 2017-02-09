@@ -239,7 +239,7 @@ class IncrementalClassifiedDataset(AbstractClassifiedDataset):
             self._vocab = np.append(self._vocab, label)
             # resize docwords matrix only when number of classes increases
             tmp = scipy.sparse.lil_matrix((len(self._vocab), len(self.titles)),
-                                          dtype=self._docwords.dtype)
+                                          dtype=np.float)
             tmp[:self.origvocabsize, :] = self._docwords[:self.origvocabsize, :]
             tmp[self.origvocabsize:, :] = self.smoothing
             for curtitle, curlabel in self.labels.items():
