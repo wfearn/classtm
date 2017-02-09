@@ -213,6 +213,15 @@ class IncrementalClassifiedDataset(AbstractClassifiedDataset):
         self._tokens[doc_id] = tokens
         return tokens
 
+    def _label_helper(self, docwords, title, label):
+        docnum = self.titlesorder[title]
+        # erase smoothing on labeled documents
+        docwords[self.origvocabsize:, docnum] = 0
+        # apply label
+        docwords[self.origvocabsize+self.classorder[label], docnum] = \
+            self.label_weight(docwords[:self.origvocabsize, docnum].sum(),
+                              docwords.shape[1])
+
     def label_document(self, title, label):
         """Label a document in this corpus
 
@@ -220,27 +229,28 @@ class IncrementalClassifiedDataset(AbstractClassifiedDataset):
                 title of document
             * label :: str
                 label of document
-        Assumes that title is in corpus
+        Assumes that title is in corpus; rebuilds docwords matrix (it not done
+        after every labeling, indexing problems crop up on predict)
         """
         self.labels[title] = label
         if label not in self.classorder:
             self.classorder[label] = len(self.classorder)
             self.orderedclasses = orderclasses(self.classorder)
             self._vocab = np.append(self._vocab, label)
-        # now rebuild docwords matrix; if not done after every labeling,
-        # indexing problems crop up on predict
-        tmp = scipy.sparse.lil_matrix((len(self._vocab), len(self.titles)),
-                                      dtype=self._docwords.dtype)
-        tmp[:self.origvocabsize, :] = self._docwords[:self.origvocabsize, :]
-        tmp[self.origvocabsize:, :] = self.smoothing
-        for title, label in self.labels.items():
-            # erase smoothing on labeled documents
-            docnum = self.titlesorder[title]
-            tmp[self.origvocabsize:, docnum] = 0
-            tmp[self.origvocabsize+self.classorder[label], docnum] = \
-                self.label_weight(tmp[:self.origvocabsize, docnum].sum(),
-                                  tmp.shape[1])
+            # resize docwords matrix only when number of classes increases
+            tmp = scipy.sparse.lil_matrix((len(self._vocab), len(self.titles)),
+                                          dtype=self._docwords.dtype)
+            tmp[:self.origvocabsize, :] = self._docwords[:self.origvocabsize, :]
+            tmp[self.origvocabsize:, :] = self.smoothing
+            for curtitle, curlabel in self.labels.items():
+                self._label_helper(tmp, curtitle, curlabel)
             self._docwords = tmp.tocsc()
+        else:
+            # number of classes remain the same, so just update the one column
+            # that needs updating
+            tmp = self._docwords.tolil()
+            self._label_helper(self._docwords, title, label)
+            self._docwords = tmp
         self._cooccurrences = None
 
 
