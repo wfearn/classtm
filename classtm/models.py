@@ -361,7 +361,11 @@ class AbstractClassifyingAnchor:
 
 
 def free_classifier(freeclassifyinganchor, trainingset, _):
-    """Builds a trained FreeClassifier"""
+    """Builds a trained FreeClassifier
+
+        * freeclassifyinganchor :: FreeClassifyingAnchor
+        * trainingset :: ClassifiedDataset
+    """
     classcount = len(trainingset.classorder)
     class_topic_weights = freeclassifyinganchor.topics[-classcount:]
     class_given_word = trainingset.Q[:-classcount, -classcount:].T
@@ -433,6 +437,13 @@ def incremental_logistic_regression(logisticanchor, trainingset):
     return result
 
 
+def incremental_free_classifier(freeclassifyinganchor, trainingset):
+    """Builds trained FreeClassifier"""
+    # conveniently, free_classifier already does everything we needed, except it
+    # had the wrong number of parameters
+    return free_classifier(freeclassifyinganchor, trainingset, None)
+
+
 class LogisticAnchor(AbstractClassifyingAnchor):
     """Algorithm that produces a model for classification tasks
 
@@ -447,15 +458,25 @@ class LogisticAnchor(AbstractClassifyingAnchor):
                                              logistic_regression)
 
 
-class IncrementalLogisticAnchor(AbstractClassifyingAnchor):
-    """LogisticAnchor with incrementally labeled corpus"""
+class AbstractIncrementalAnchor(AbstractClassifyingAnchor):
+    """Superclass for anchor words with incrementally labeled corpus
 
-    def __init__(self, rng, numtopics, expgrad_epsilon):
-        super(IncrementalLogisticAnchor, self).__init__(rng,
+        * self.classifier :: function(AbstractIncrementalAnchor,
+                                      AbstractClassifiedDataset)
+            when called, this function returns an sklearn-style classifier that
+            has already been trained; this self.classifier differs from the one
+            in AbstractClassifyingAnchor in that the other one assumes that all
+            documents in the dataset will be used in training; this one assumes
+            that only labeled data in the dataset will be used in training
+    """
+
+    def __init__(self, rng, numtopics, expgrad_epsilon, classifier):
+        super(AbstractIncrementalAnchor, self).__init__(rng,
                                                         numtopics,
                                                         expgrad_epsilon,
                                                         None,
-                                                        None)
+                                                        classifier)
+
 
     def train(self, dataset, varname, lda_helper, anchors_file):
         """Train model
@@ -503,12 +524,49 @@ class IncrementalLogisticAnchor(AbstractClassifyingAnchor):
                                                   self.anchors,
                                                   self.expgrad_epsilon)
         self.lda = lda_helper(self.topics, varname)
-        self.predictor = incremental_logistic_regression(self, trainingset)
+        self.predictor = self.classifier(self, trainingset)
+
+
+class IncrementalLogisticAnchor(AbstractIncrementalAnchor):
+    """LogisticAnchor with incrementally labeled corpus"""
+
+    def __init__(self, rng, numtopics, expgrad_epsilon):
+        super(IncrementalLogisticAnchor, self).__init__(rng,
+                                                        numtopics,
+                                                        expgrad_epsilon,
+                                                        incremental_logistic_regression)
+
+
+class IncrementalFreeClassifyingAnchor(AbstractIncrementalAnchor):
+    """FreeClassifyingAnchor with incrementally labeled corpus"""
+
+    def __init__(self, rng, numtopics, expgrad_epsilon):
+        super(IncrementalFreeClassifyingAnchor, self).__init__(rng,
+                                                               numtopics,
+                                                               expgrad_epsilon,
+                                                               incremental_free_classifier)
+
+    def predict(self, tokenses):
+        """Predict labels"""
+        docwses = []
+        doc_words = scipy.sparse.dok_matrix((self.vocabsize-len(self.classorder), len(tokenses)))
+        for i, tokens in enumerate(tokenses):
+            real_vocab = self._convert_vocab_space(tokens)
+            docwses.append(real_vocab)
+            for token in real_vocab:
+                doc_words[token, i] += 1
+        features = self.predict_topics(docwses)
+        return self.predictor.predict(features, doc_words.tocsc())
 
 
 FACTORY = {'logistic': LogisticAnchor,
-           'free': FreeClassifyingAnchor,
-           'inclog': IncrementalLogisticAnchor}
+           'free': FreeClassifyingAnchor}
+
+
+INCFACTORY = {'inclog': [IncrementalLogisticAnchor,
+                         classtm.labeled.IncrementalSupervisedAnchorDataset],
+              'incfree': [IncrementalFreeClassifyingAnchor,
+                          classtm.labeled.IncrementalClassifiedDataset]}
 
 
 def build(rng, settings):
@@ -516,4 +574,13 @@ def build(rng, settings):
     numtopics = int(settings['numtopics'])
     expgrad_epsilon = float(settings['expgrad_epsilon'])
     return FACTORY[settings['model']](rng, numtopics, expgrad_epsilon)
+
+
+def initialize(rng, dataset, settings):
+    """Build model according to settings"""
+    numtopics = int(settings['numtopics'])
+    expgrad_epsilon = float(settings['expgrad_epsilon'])
+    modeltype, datasettype = INCFACTORY[settings['model']]
+    return modeltype(rng, numtopics, expgrad_epsilon),\
+           datasettype(dataset, settings)
 

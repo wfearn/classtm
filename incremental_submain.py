@@ -56,8 +56,6 @@ def _run():
         else:
             rng = random.Random(args.seed)
         # print('Set random seed: ', args.seed)
-        model = classtm.models.build(rng, settings)
-        # print('Built model')
         test_doc_ids, train_doc_ids = submain.partition_data_ids(dataset.num_docs,
                                                                  rng,
                                                                  settings)
@@ -70,6 +68,11 @@ def _run():
         for tid in train_doc_ids:
             known_labels.append(dataset.labels[dataset.titles[tid]])
         # print('Set up initial sets')
+        # TODO is it cheating to use test set documents to construct Q?
+        model, incrementaldataset = classtm.models.initialize(rng,
+                                                              dataset,
+                                                              settings)
+        # print('Built model')
 
         end = time.time()
         init_time = datetime.timedelta(seconds=end-start)
@@ -77,8 +80,6 @@ def _run():
         startlabeled = int(settings['startlabeled'])
         endlabeled = int(settings['endlabeled'])
         increment = int(settings['increment'])
-        incrementaldataset = \
-            classtm.labeled.IncrementalSupervisedAnchorDataset(dataset)
         for i, trainid in enumerate(train_doc_ids):
             if i < startlabeled:
                 title = dataset.titles[trainid]

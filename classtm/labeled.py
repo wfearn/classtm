@@ -125,10 +125,123 @@ class ClassifiedDataset(AbstractClassifiedDataset):
         for token_id, count in zip(token_ids, counts):
             if token_id < self.origvocabsize:
                 tokens.extend([token_id] * count)
+        #pylint:disable-msg=no-member
         rng.shuffle(tokens)
 
         self._tokens[doc_id] = tokens
         return tokens
+
+
+def get_titles_order(titles):
+    """Builds dictionary mapping title to index"""
+    result = {}
+    for i, title in enumerate(titles):
+        result[title] = i
+    return result
+
+
+def doc_scaled(value):
+    """Returns function that returns value scaled by document length"""
+    def _inner(doclength, corpussize):
+        """Returns value scaled by doclength"""
+        del corpussize
+        return doclength * value
+    return _inner
+
+
+def corpus_scaled(value):
+    """Returns function that returns value scaled by corpus size"""
+    def _inner(doclength, corpussize):
+        """Returns value scaled by corpus size"""
+        del doclength
+        return corpussize * value
+    return _inner
+
+
+def return_value(value):
+    """Returns function that returns value"""
+    def _inner(doclength, corpussize):
+        """Returns value"""
+        del doclength, corpussize
+        return value
+    return _inner
+
+
+def get_label_weight_function(label_weight):
+    """Get function that returns label weight function
+
+        * label_weight :: str
+            label_weight can take one of three forms:
+                * doc:<float>
+                * corpus:<float>
+                * <float>
+    """
+    if ':' in label_weight:
+        args = label_weight.split(':')
+        if args[0] == 'doc':
+            return doc_scaled(float(args[1]))
+        elif args[0] == 'corpus':
+            return corpus_scaled(float(args[1]))
+        else:
+            raise Exception('Unknown label_weight function: ' + args[0])
+    return return_value(float(label_weight))
+
+
+#pylint:disable-msg=too-many-instance-attributes
+class IncrementalClassifiedDataset(AbstractClassifiedDataset):
+    """ClassifiedDataset for incremental case"""
+
+    def __init__(self, dataset, settings):
+        super(IncrementalClassifiedDataset, self).__init__(dataset, {}, {})
+        self.origvocabsize = len(self._vocab)
+        self.smoothing = float(settings['smoothing'])
+        self.label_weight = get_label_weight_function(settings['label_weight'])
+        self.titlesorder = get_titles_order(self.titles)
+
+    def doc_tokens(self, doc_id, rng=np.random):
+        if doc_id in self._tokens:
+            return self._tokens[doc_id]
+
+        token_ids, _, counts = scipy.sparse.find(self._docwords[:, doc_id])
+        tokens = []
+        for token_id, count in zip(token_ids, counts):
+            if token_id < self.origvocabsize:
+                tokens.extend([token_id] * count)
+        #pylint:disable-msg=no-member
+        rng.shuffle(tokens)
+
+        self._tokens[doc_id] = tokens
+        return tokens
+
+    def label_document(self, title, label):
+        """Label a document in this corpus
+
+            * title :: str
+                title of document
+            * label :: str
+                label of document
+        Assumes that title is in corpus
+        """
+        self.labels[title] = label
+        if label not in self.classorder:
+            self.classorder[label] = len(self.classorder)
+            self.orderedclasses = orderclasses(self.classorder)
+            self._vocab = np.append(self._vocab, label)
+        # now rebuild docwords matrix; if not done after every labeling,
+        # indexing problems crop up on predict
+        tmp = scipy.sparse.lil_matrix((len(self._vocab), len(self.titles)),
+                                      dtype=self._docwords.dtype)
+        tmp[:self.origvocabsize, :] = self._docwords[:self.origvocabsize, :]
+        tmp[self.origvocabsize:, :] = self.smoothing
+        for title, label in self.labels.items():
+            # erase smoothing on labeled documents
+            docnum = self.titlesorder[title]
+            tmp[self.origvocabsize:, docnum] = 0
+            tmp[self.origvocabsize+self.classorder[label], docnum] = \
+                self.label_weight(tmp[:self.origvocabsize, docnum].sum(),
+                                  tmp.shape[1])
+            self._docwords = tmp.tocsc()
+        self._cooccurrences = None
 
 
 class SupervisedAnchorDataset(AbstractClassifiedDataset):
@@ -176,13 +289,11 @@ class IncrementalSupervisedAnchorDataset(SupervisedAnchorDataset):
     incrementally labeled data
     """
 
-    def __init__(self, dataset):
+    def __init__(self, dataset, _):
         super(IncrementalSupervisedAnchorDataset, self).__init__(dataset,
                                                                  {},
                                                                  {})
-        self.titlesorder = {}
-        for i, title in enumerate(self.titles):
-            self.titlesorder[title] = i
+        self.titlesorder = get_titles_order(self.titles)
 
     def label_document(self, title, label):
         """Label a document in this corpus
