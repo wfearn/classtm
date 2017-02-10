@@ -229,7 +229,7 @@ class IncrementalClassifiedDataset(AbstractClassifiedDataset):
                 title of document
             * label :: str
                 label of document
-        Assumes that title is in corpus; rebuilds docwords matrix (it not done
+        Assumes that title is in corpus; rebuilds docwords matrix (if not done
         after every labeling, indexing problems crop up on predict)
         """
         self.labels[title] = label
@@ -252,6 +252,85 @@ class IncrementalClassifiedDataset(AbstractClassifiedDataset):
             self._label_helper(self._docwords, title, label)
             self._docwords = tmp
         self._cooccurrences = None
+
+
+def get_doc_co_counts(sparsevec):
+    """Returns document cooccurrence counts as dense matrix
+
+        * sparsevec :: vocab x 1 scipy.sparse.csc_matrix
+    """
+    first_term = sparsevec * sparsevec.T
+    # first_term - Diag(sparsevec)
+    # since sparsevec is a column vector, we know that all of its data are in
+    # the one column
+    for row, value in zip(sparsevec.indices, sparsevec.data):
+        for i, ft_row in enumerate(
+                first_term.indices[
+                    first_term.indptr[row]:first_term.indptr[row+1]]):
+            if ft_row == row:
+                first_term.data[first_term.indptr[row]+i] -= value
+                break
+            continue
+    return first_term.todense()
+
+
+class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
+    """ClassifiedDataset for incremental labeling using quick Q building"""
+
+    def __init__(self, dataset, settings):
+        super(QuickIncrementalClassifiedDataset, self).__init__(dataset,
+                                                                settings)
+        self.newlabels = {}
+
+    def label_document(self, title, label):
+        """Label a document in this corpus
+
+            * title :: str
+                title of document
+            * label :: str
+                label of document
+        Assumes that title is in corpus; recalculates Q matrix
+        """
+        self.labels[title] = label
+        # pylint:disable-msg=pointless-statement
+        # putting the above disable on the line immediately above the line
+        # pylint was complaining about didn't work, but it works when I put the
+        # disable here
+        if label not in self.classorder:
+            self.classorder[label] = len(self.classorder)
+            self.orderedclasses = orderclasses(self.classorder)
+            self._vocab = np.append(self._vocab, label)
+            # resize docwords matrix only when number of classes increases
+            tmp = scipy.sparse.lil_matrix((len(self._vocab), len(self.titles)),
+                                          dtype=np.float)
+            tmp[:self.origvocabsize, :] = self._docwords[:self.origvocabsize, :]
+            tmp[self.origvocabsize:, :] = self.smoothing
+            for curtitle, curlabel in self.labels.items():
+                self._label_helper(tmp, curtitle, curlabel)
+            self._docwords = tmp.tocsc()
+            # need to expand Q, since there is now a new label; let
+            # compute_cooccurrences get the right values for smoothing terms
+            self._cooccurrences = None
+        else:
+            # make sure that Q is built
+            if self._cooccurrences is None:
+                self.compute_cooccurrences()
+            num_docs = self._docwords.shape[1]
+            # take current document away from Q
+            docnum = self.titlesorder[title]
+            doclength = self._docwords[:, docnum].sum()
+            doc_co_counts = get_doc_co_counts(self._docwords[:, docnum])
+            self._cooccurrences -= \
+                doc_co_counts / (doclength * (doclength - 1)) / num_docs
+            # update document with label
+            tmp = self._docwords.tolil()
+            self._label_helper(self._docwords, title, label)
+            self._docwords = tmp.tocsc()
+            # put current document with label back into Q
+            doclength = self._docwords[:, docnum].sum()
+            doc_co_counts = get_doc_co_counts(self._docwords[:, docnum])
+            self._cooccurrences += \
+                doc_co_counts / (doclength * (doclength - 1)) / num_docs
 
 
 class SupervisedAnchorDataset(AbstractClassifiedDataset):

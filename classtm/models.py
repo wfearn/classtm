@@ -566,7 +566,9 @@ FACTORY = {'logistic': LogisticAnchor,
 INCFACTORY = {'inclog': [IncrementalLogisticAnchor,
                          classtm.labeled.IncrementalSupervisedAnchorDataset],
               'incfree': [IncrementalFreeClassifyingAnchor,
-                          classtm.labeled.IncrementalClassifiedDataset]}
+                          classtm.labeled.IncrementalClassifiedDataset],
+              'quickincfree': [IncrementalFreeClassifyingAnchor,
+                               classtm.labeled.QuickIncrementalClassifiedDataset]}
 
 
 def build(rng, settings):
