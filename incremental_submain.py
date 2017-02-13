@@ -68,7 +68,6 @@ def _run():
         for tid in train_doc_ids:
             known_labels.append(dataset.labels[dataset.titles[tid]])
         # print('Set up initial sets')
-        # TODO is it cheating to use test set documents to construct Q?
         model, incrementaldataset = classtm.models.initialize(rng,
                                                               dataset,
                                                               settings)
