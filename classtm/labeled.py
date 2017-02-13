@@ -249,8 +249,8 @@ class IncrementalClassifiedDataset(AbstractClassifiedDataset):
             # number of classes remain the same, so just update the one column
             # that needs updating
             tmp = self._docwords.tolil()
-            self._label_helper(self._docwords, title, label)
-            self._docwords = tmp
+            self._label_helper(tmp, title, label)
+            self._docwords = tmp.tocsc()
         self._cooccurrences = None
 
 
@@ -288,6 +288,8 @@ class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
         """Builds Q with just the documents in docnums
 
             * docnums :: np.array
+                column indices into self._docwords for the documents that have
+                been labeled for this update
         """
         data = []
         indices = []
@@ -308,9 +310,7 @@ class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
                 indptr.append(len(data))
         H_tilde = scipy.sparse.csc_matrix(
             (data, indices, indptr), dtype=np.float)
-        return H_tilde * H_tilde.transpose() - \
-            scipy.sparse.dia_matrix((H_hat, np.array([0])),
-                                    shape=(self.vocab_size, self.vocab_size))
+        return H_tilde * H_tilde.transpose() - np.diag(H_hat)
 
     def compute_cooccurrences(self):
         """Updates Q"""
@@ -328,16 +328,15 @@ class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
             docnums = np.array(docnums)
             miniq = self._build_miniq(docnums)
             # take it out of Q
-            self._cooccurrences -= miniq / self._docwords.shape[1]
+            self._cooccurrences -= np.array(miniq / self._docwords.shape[1])
             # compute what needs to be put into Q
             tmp = self._docwords.tolil()
             for title, label in self.newlabels.items():
-                self._label_helper(self._docwords, title, label)
+                self._label_helper(tmp, title, label)
             self._docwords = tmp.tocsc()
             miniq = self._build_miniq(docnums)
             # put it into Q
-            self._cooccurrences += miniq / self._docwords.shape[1]
-            self._cooccurrences = np.squeeze(np.asarray(self._cooccurrences))
+            self._cooccurrences += np.array(miniq / self._docwords.shape[1])
             # reset new labels
             self.newlabels = {}
 
@@ -350,6 +349,7 @@ class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
                 label of document
         Assumes that title is in corpus
         """
+        self.labels[title] = label
         if label not in self.classorder:
             # add labels for previously labeled documents
             self.compute_cooccurrences()
@@ -368,8 +368,8 @@ class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
             for curtitle, curlabel in self.labels.items():
                 self._label_helper(tmp, curtitle, curlabel)
             self._docwords = tmp.tocsc()
-        self.newlabels[title] = label
-        self.labels[title] = label
+        else:
+            self.newlabels[title] = label
         self._cooccurrences = None
 
 
