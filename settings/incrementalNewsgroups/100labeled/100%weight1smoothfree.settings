@@ -19,7 +19,7 @@ endlabeled  101
 increment   1
 
 # model options
-model   inclog
+model   incfree
 numtopics   40
 expgrad_epsilon 1e-4
 lda_helper  variational
