@@ -147,6 +147,8 @@ def make_plots(outputdir, dirs):
 
     free_accs = {}
     log_accs = {}
+    free_times = {}
+    log_times = {}
     # get the data from the files
     data = {}
     for dir in dirs:
@@ -162,13 +164,17 @@ def make_plots(outputdir, dirs):
             labeled_count = subdatum['labeled_count']
             if labeled_count not in free_accs.keys():
                 free_accs[labeled_count] = []
+                free_times[labeled_count] = []
             free_accs[labeled_count].append(get_accuracy(subdatum))
+            free_times[labeled_count].append(get_time(subdatum))
     for datum in data['log']:
         for subdatum in datum:
             labeled_count = subdatum['labeled_count']
             if labeled_count not in log_accs.keys():
                 log_accs[labeled_count] = []
+                log_times[labeled_count] = []
             log_accs[labeled_count].append(get_accuracy(subdatum))
+            log_times[labeled_count].append(get_time(subdatum))
     # plot the data
     free_labeled = list(sorted(free_accs.keys()))
     log_labeled = list(sorted(log_accs.keys()))
@@ -182,7 +188,6 @@ def make_plots(outputdir, dirs):
         print('No accuracy data collected! Are you using a new model?')
     acc_labels = make_label('Number of Documents Labeled', 'Accuracy')
     make_plot(acc_datas, free_labeled, log_labeled, acc_labels, outputdir, 'accuracy.pdf', colors)
-    """
     # then plot time
     time_datas = {}
     if free_times:
@@ -192,8 +197,7 @@ def make_plots(outputdir, dirs):
     if not time_datas:
         print('No time data collected! Are you using a new model?')
     time_labels = make_label('Number of Documents Labeled', 'Time to Train')
-    make_plot(time_datas, free_topics, log_topics, time_labels, outputdir, 'times.pdf', colors)
-    """
+    make_plot(time_datas, free_labeled, log_labeled, time_labels, outputdir, 'times.pdf', colors)
 
 
 if __name__ == '__main__':
