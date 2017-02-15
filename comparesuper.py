@@ -65,11 +65,8 @@ def _run():
         for tid in test_doc_ids:
             test_labels.append(dataset.labels[dataset.titles[tid]])
             test_words.append(dataset.doc_tokens(tid))
-        known_labels = []
-        for tid in train_doc_ids:
-            known_labels.append(dataset.labels[dataset.titles[tid]])
         # print('Set up initial sets')
-        model = classtm.models.build(rng, dataset, settings)
+        model = classtm.models.build(rng, settings)
         # print('Built model')
 
         end = time.time()
@@ -84,7 +81,7 @@ def _run():
         for docid in unlabeled_doc_ids[:labeled_count]:
             train_labels.append(dataset.labels[dataset.titles[docid]])
         results = []
-        while len(incrementaldataset.labels) <= endlabeled:
+        while True:
             start = time.time()
             anchors_file = settings.get('anchors_file')
             model.train(
@@ -111,7 +108,7 @@ def _run():
                             'train_time': train_time,
                             'eval_time': eval_time,
                             'model': model})
-            if labeled_count >= len(unlabeled_doc_ids):
+            if labeled_count >= endlabeled or labeled_count >= len(unlabeled_doc_ids):
                 break
             prev_count = labeled_count
             if len(unlabeled_doc_ids) >= labeled_count + increment:
