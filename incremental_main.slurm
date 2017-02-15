@@ -1,10 +1,10 @@
 #!/bin/bash
 
 #SBATCH --time=08:00:00   # walltime
-#SBATCH --ntasks=1   # number of processor cores (i.e. tasks)
+#SBATCH --ntasks=24   # number of processor cores (i.e. tasks)
 #SBATCH --nodes=1   # number of nodes
-#SBATCH --mem-per-cpu=5G   # memory per CPU core
-#SBATCH -p m8
+#SBATCH --mem-per-cpu=10G   # memory per CPU core
+#SBATCH -p m8f
 #SBATCH -J "Newsgroups Benchmark"   # job name
 #SBATCH --mail-user=cojoco@gmail.com   # email address
 #SBATCH --mail-type=BEGIN
