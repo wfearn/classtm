@@ -1,5 +1,5 @@
 # corpus options
-pickle  newsgroups.coarse.class.pickle
+pickle  tripadvisor.class.pickle
 corpus  /local/cojoco/data/newsgroups-dedup/*/*
 
 # filter options
@@ -19,7 +19,7 @@ endlabeled  10000
 increment   1
 
 # model options
-model   incfree
+model   quickincfree
 numtopics   40
 expgrad_epsilon 1e-4
 lda_helper  variational

@@ -4,7 +4,7 @@ corpus  /fslhome/cojoco/compute/data/tripadvisor/text.txt
 labels  /fslhome/cojoco/compute/data/tripadvisor/response.txt
 
 # filter options
-englstop  /fslhome/cojoco/compute/data/stopwords/english.txt
+stopwords  /fslhome/cojoco/compute/data/stopwords/english.txt
 smalldoc  30
 rare    150
 common  100000000

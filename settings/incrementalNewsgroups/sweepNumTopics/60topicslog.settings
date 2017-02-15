@@ -11,16 +11,16 @@ common  1500
 pregenerate YES
 
 # experiment options
-group   500weight-0.01smoothing
+group   60topicslog
 seed    531
 testsize    1000
-startlabeled  10000
-endlabeled  10000
+startlabeled  5000
+endlabeled  5000
 increment   1
 
 # model options
-model   incfree
-numtopics   40
+model   inclog
+numtopics   60
 expgrad_epsilon 1e-4
 lda_helper  variational
 label_weight  500
