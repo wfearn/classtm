@@ -96,6 +96,9 @@ def _run():
                                                   dataset.labels[title])
         results = []
         labeled_count = startlabeled
+        # this thread will kill the program after 60 minutes
+#        thread = Thread(target=kill_at_sixty,daemon=True)
+#        thread.start()
         while len(incrementaldataset.labels) <= endlabeled:
             start = time.time()
             anchors_file = settings.get('anchors_file')
