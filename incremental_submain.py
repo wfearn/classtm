@@ -5,6 +5,7 @@ import os
 import pickle
 import random
 import socket
+from threading import Thread
 import time
 
 from activetm import utils
@@ -13,6 +14,15 @@ import classtm.models
 from classtm import evaluate
 
 import submain
+
+
+def kill_at_sixty():
+    """Kills the program at 60 minutes"""
+    # Should sleep 60 minutes, 60*60 is 3600 seconds
+    seconds_to_sleep = 3600
+    time.sleep(seconds_to_sleep)
+    print('\n\nHit the 60-minute mark, ran out of time!\n\n')
+    os._exit(os.EX_OK)
 
 
 def parse_args():
