@@ -15,7 +15,7 @@ group   5000weight-0.0001smoothing
 seed    531
 testsize    1000
 startlabeled  100
-endlabeled  101
+endlabeled  100
 increment   1
 
 # model options

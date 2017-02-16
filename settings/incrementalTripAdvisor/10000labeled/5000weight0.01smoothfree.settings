@@ -14,8 +14,8 @@ pregenerate YES
 group   5000weight-0.01smoothing
 seed    531
 testsize    1000
-startlabeled  100
-endlabeled  101
+startlabeled  10000
+endlabeled  10000
 increment   1
 
 # model options
