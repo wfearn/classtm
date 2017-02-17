@@ -309,7 +309,7 @@ class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
                 indices.extend(row_indices)
                 indptr.append(len(data))
         H_tilde = scipy.sparse.csc_matrix(
-            (data, indices, indptr), dtype=np.float)
+            (data, indices, indptr), shape=(self.vocab_size, len(indptr)-1), dtype=np.float)
         return H_tilde * H_tilde.transpose() - np.diag(H_hat)
 
     def compute_cooccurrences(self):
