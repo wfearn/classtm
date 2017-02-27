@@ -15,8 +15,8 @@ group   free
 seed    531
 testsize    1000
 startlabeled  1000
-endlabeled  18000
-increment   1000
+endlabeled  1000
+increment   1
 
 # model options
 model   quickincfree
