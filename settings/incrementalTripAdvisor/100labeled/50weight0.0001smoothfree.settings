@@ -11,7 +11,7 @@ common  1500
 pregenerate YES
 
 # experiment options
-group   1weight-0.0001smoothing
+group   50weight-0.0001smoothing
 seed    531
 testsize    1000
 startlabeled  100
@@ -23,5 +23,5 @@ model   quickincfree
 numtopics   40
 expgrad_epsilon 1e-4
 lda_helper  variational
-label_weight  1
+label_weight  50
 smoothing   0.0001
