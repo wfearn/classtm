@@ -299,6 +299,8 @@ class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
             col_start = self._docwords.indptr[docnum]
             col_end = self._docwords.indptr[docnum+1]
             row_indices = self._docwords.indices[col_start:col_end]
+            if row_indices[-1] < self.origvocabsize:
+                print(row_indices[-1])
             count = np.sum(self._docwords.data[col_start:col_end])
             norm = count * (count - 1)
             if norm != 0:
