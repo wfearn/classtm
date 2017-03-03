@@ -311,13 +311,15 @@ class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
                 indices.extend(row_indices)
                 indptr.append(len(data))
         H_tilde = scipy.sparse.csc_matrix(
-            (data, indices, indptr), shape=(self.vocab_size, len(indptr)-1), dtype=np.float)
+            (data, indices, indptr),
+            shape=(self.vocab_size, len(indptr)-1),
+            dtype=np.float)
         return H_tilde * H_tilde.transpose() - np.diag(H_hat)
 
-    def compute_cooccurrences(self):
+    def compute_cooccurrences(self, epsilon=1e-15):
         """Updates Q"""
         if self.prevq is None:
-            ankura.pipeline.Dataset.compute_cooccurrences(self)
+            ankura.pipeline.Dataset.compute_cooccurrences(self, epsilon)
             self.prevq = self._cooccurrences
         else:
             # reload previous Q
@@ -341,6 +343,8 @@ class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
             self._cooccurrences += np.array(miniq / self._docwords.shape[1])
             # reset new labels
             self.newlabels = {}
+        self._cooccurrences[
+            (epsilon < self._cooccurrences) & (self._cooccurrences < 0)] = 0
 
     def label_document(self, title, label):
         """Label a document in this corpus
@@ -388,7 +392,7 @@ class SupervisedAnchorDataset(AbstractClassifiedDataset):
         # fool ankura into calling compute_cooccurrences
         self._cooccurrences = None
 
-    def compute_cooccurrences(self):
+    def compute_cooccurrences(self, epsilon=1e-15):
         orig_height, orig_width = self._dataset_cooccurrences.shape
         classcount = len(self.classorder)
         self._cooccurrences = np.zeros((orig_height, orig_width+classcount))

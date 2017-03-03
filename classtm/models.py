@@ -3,7 +3,10 @@ import os
 import subprocess
 import json
 
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.svm import SVC
 import numpy as np
 import scipy
 from scipy.sparse import csc_matrix
@@ -25,7 +28,8 @@ class LDAHelper:
     def __init__(self, topics, varname):
         pass
 
-#pylint:disable-msg=too-few-public-methods
+
+# pylint:disable-msg=too-few-public-methods
 class VariationalHelper:
     """Helper to get topic mixtures for documents"""
 
@@ -36,7 +40,8 @@ class VariationalHelper:
                 should have shape (vocab size, number of topics)
             * varname :: String
                 output file name root; note that varname must be less than 86
-                characters in length (or else lda-c will do some strange things)
+                characters in length (or else lda-c will do some strange
+                things)
         """
         self.varname = varname
         if len(varname) >= 86:
@@ -48,7 +53,7 @@ class VariationalHelper:
         topicscopy = topics.T.copy()
         # lda-c stores topics in log space
         topicscopy += 0.1e-100
-        #pylint:disable-msg=no-member
+        # pylint:disable-msg=no-member
         topicscopy = np.log(topicscopy)
         np.savetxt(varname+'.beta', topicscopy, fmt='%5.10f')
         with open(varname+'.other', 'w') as ofh:
@@ -98,7 +103,8 @@ class SamplingHelper:
                 should have shape (vocab size, number of topics)
             * varname :: String
                 output file name root; note that varname must be less than 86
-                characters in length (or else lda-c will do some strange things)
+                characters in length (or else lda-c will do some strange
+                things)
         """
         self.topics = topics
         self.varname = varname
@@ -124,9 +130,10 @@ class SamplingHelper:
         return topic_mixes
 
 
-#pylint:disable-msg=too-few-public-methods
+# pylint:disable-msg=too-few-public-methods
 class FreeClassifier:
-    """Classifier that came for free as part of training FreeClassifyingAnchor"""
+    """Classifier that came for free as part of training FreeClassifyingAnchor
+    """
 
     def __init__(self, weights, class_given_word, classorder):
         """Initialize FreeClassifier instance with all the information it needs
@@ -137,8 +144,8 @@ class FreeClassifier:
                 expected shape is (number of classes, vocab size), this is the
                 probability of each class given each word
             * classorder :: {'class': int}
-                dictionary of class names that are mapped to corresponding index
-                in weights
+                dictionary of class names that are mapped to corresponding
+                index in weights
         """
         # column normalize
         epsilon = 1e-7
@@ -192,7 +199,9 @@ def build_train_set(dataset, train_doc_ids, knownresp, trainsettype):
     trainingset = trainsettype(filtered,
                                labels,
                                dataset.classorder)
-    return trainingset, corpus_to_train_vocab, list(range(0, len(train_doc_ids)))
+    return trainingset, \
+        corpus_to_train_vocab, \
+        list(range(0, len(train_doc_ids)))
 
 
 def id_cands_maker(classcount, doc_threshold):
@@ -208,8 +217,8 @@ def id_cands_maker(classcount, doc_threshold):
     def identify_candidates(docwords):
         """Returns list of anchor word candidates
             * docwords :: scipy.sparse.csc
-                sparse matrix of word counts per document; shape is (V, D), where V
-                is the vocabulary size and D is the number of documents
+                sparse matrix of word counts per document; shape is (V, D),
+                where V is the vocabulary size and D is the number of documents
         """
         candidate_anchors = []
         docwords_csr = docwords.tocsr()
@@ -221,11 +230,11 @@ def id_cands_maker(classcount, doc_threshold):
     return identify_candidates
 
 
-#pylint:disable-msg=too-many-instance-attributes
+# pylint:disable-msg=too-many-instance-attributes
 class AbstractClassifyingAnchor:
     """Base class for classifying anchor words"""
 
-    #pylint:disable-msg=too-many-arguments
+    # pylint:disable-msg=too-many-arguments
     def __init__(self,
                  rng,
                  numtopics,
@@ -260,7 +269,13 @@ class AbstractClassifyingAnchor:
         self.lda = None
         self.predictor = None
 
-    def train(self, dataset, train_doc_ids, knownresp, varname, lda_helper, anchors_file):
+    def train(self,
+              dataset,
+              train_doc_ids,
+              knownresp,
+              varname,
+              lda_helper,
+              anchors_file):
         """Train model
             * dataset :: classtm.labeled.ClassifiedDataset
                 the complete corpus used for experiments
@@ -285,20 +300,23 @@ class AbstractClassifyingAnchor:
                             self.dataset_ctor)
         self.vocabsize = trainingset.vocab_size
         self.classorder = trainingset.classorder
-        pdim = 1000 if trainingset.vocab_size > 1000 else trainingset.vocab_size
+        pdim = 1000 \
+            if trainingset.vocab_size > 1000 else trainingset.vocab_size
         if anchors_file is None:
             self.anchors = \
-                ankura.anchor.gramschmidt_anchors(trainingset,
-                                                  self.numtopics,
-                                                  id_cands_maker(len(self.classorder),
-                                                                 0.015 * len(trainingset.titles)),
-                                                  project_dim=pdim)
+                ankura.anchor.gramschmidt_anchors(
+                    trainingset,
+                    self.numtopics,
+                    id_cands_maker(len(self.classorder),
+                                   0.015 * len(trainingset.titles)),
+                    project_dim=pdim)
         else:
             # pull user-made anchors from a JSON file of anchors
             user_file = json.load(open(anchors_file, 'r'))
             # we only want the last group of anchors that were chosen
             user_anchors = user_file[len(user_file)-1]['anchors']
-            self.anchors = ankura.anchor.multiword_anchors(trainingset, user_anchors)
+            self.anchors = ankura.anchor.multiword_anchors(trainingset,
+                                                           user_anchors)
             # numtopics is determined at runtime when using user anchors
             self.numtopics = len(self.anchors)
         # relying on fact that recover_topics goes through all rows of Q, the
@@ -352,7 +370,9 @@ class AbstractClassifyingAnchor:
         result = np.zeros((len(docwses), self.numtopics))
         added = 0
         for i in range(len(docwses)):
-            if len(empties) > 0 and added < len(empties) and i == empties[added]:
+            if len(empties) > 0 and \
+                    added < len(empties) and \
+                    i == empties[added]:
                 result[i:] = empty_mix
                 added += 1
             else:
@@ -373,7 +393,7 @@ def free_classifier(freeclassifyinganchor, trainingset, _):
                           freeclassifyinganchor.classorder)
 
 
-#pylint:disable-msg=too-many-instance-attributes
+# pylint:disable-msg=too-many-instance-attributes
 class FreeClassifyingAnchor(AbstractClassifyingAnchor):
     """Algorithm that produces a model for classification tasks
 
@@ -382,16 +402,18 @@ class FreeClassifyingAnchor(AbstractClassifyingAnchor):
     """
 
     def __init__(self, rng, numtopics, expgrad_epsilon):
-        super(FreeClassifyingAnchor, self).__init__(rng,
-                                                    numtopics,
-                                                    expgrad_epsilon,
-                                                    classtm.labeled.ClassifiedDataset,
-                                                    free_classifier)
+        super(FreeClassifyingAnchor, self).__init__(
+            rng,
+            numtopics,
+            expgrad_epsilon,
+            classtm.labeled.ClassifiedDataset,
+            free_classifier)
 
     def predict(self, tokenses):
         """Predict labels"""
         docwses = []
-        doc_words = scipy.sparse.dok_matrix((self.vocabsize-len(self.classorder), len(tokenses)))
+        doc_words = scipy.sparse.dok_matrix(
+            (self.vocabsize-len(self.classorder), len(tokenses)))
         for i, tokens in enumerate(tokenses):
             real_vocab = self._convert_vocab_space(tokens)
             docwses.append(real_vocab)
@@ -409,13 +431,52 @@ def build_train_adapter(dataset, train_doc_ids, knownresp):
                            classtm.labeled.SupervisedAnchorDataset)
 
 
-def logistic_regression(logisticanchor, trainingset, knownresp):
-    """Builds trained LogisticRegression"""
+def sklearn_classifier(anchor, trainingset, knownresp, classifier):
+    """Builds trained classifier"""
     docwses = []
     for i in range(len(trainingset.titles)):
         docwses.append(trainingset.doc_tokens(i))
-    result = LogisticRegression()
-    features = logisticanchor.predict_topics(docwses)
+    result = classifier()
+    features = anchor.predict_topics(docwses)
+    result.fit(features, np.array(knownresp))
+    return result
+
+
+def logistic_regression(logisticanchor, trainingset, knownresp):
+    """Builds trained LogisticRegression"""
+    return sklearn_classifier(logisticanchor,
+                              trainingset,
+                              knownresp,
+                              LogisticRegression)
+
+
+def svm(svmanchor, trainingset, knownresp):
+    """Builds trained SVC"""
+    return sklearn_classifier(svmanchor, trainingset, knownresp, SVC)
+
+
+def random_forest(rfanchor, trainingset, knownresp):
+    """Builds trained RandomForestClassifier"""
+    return sklearn_classifier(rfanchor,
+                              trainingset,
+                              knownresp,
+                              RandomForestClassifier)
+
+
+def naive_bayes(nbanchor, trainingset, knownresp):
+    """Builds trained MultinomialNB"""
+    return sklearn_classifier(nbanchor, trainingset, knownresp, MultinomialNB)
+
+
+def incremental_sklearn(anchor, trainingset, classifier):
+    """Builds trained classifier for partially labeled corpus"""
+    docwses = []
+    knownresp = []
+    for title, label in trainingset.labels.items():
+        docwses.append(trainingset.doc_tokens(trainingset.titlesorder[title]))
+        knownresp.append(label)
+    result = classifier()
+    features = anchor.predict_topics(docwses)
     result.fit(features, np.array(knownresp))
     return result
 
@@ -426,21 +487,28 @@ def incremental_logistic_regression(logisticanchor, trainingset):
         * logisticanchor :: IncrementalLogisticAnchor
         * trainingset :: IncrementalSupervisedAnchorDataset
     """
-    docwses = []
-    knownresp = []
-    for title, label in trainingset.labels.items():
-        docwses.append(trainingset.doc_tokens(trainingset.titlesorder[title]))
-        knownresp.append(label)
-    result = LogisticRegression()
-    features = logisticanchor.predict_topics(docwses)
-    result.fit(features, np.array(knownresp))
-    return result
+    return incremental_sklearn(logisticanchor, trainingset, LogisticRegression)
+
+
+def incremental_svm(svmanchor, trainingset):
+    """Builds trained SVC for partially labeled corpus"""
+    return incremental_sklearn(svmanchor, trainingset, SVC)
+
+
+def incremental_random_forest(rfanchor, trainingset):
+    """Builds trained RandomForestClassifier for partially labeled corpus"""
+    return incremental_sklearn(rfanchor, trainingset, RandomForestClassifier)
+
+
+def incremental_naive_bayes(nbanchor, trainingset):
+    """Builds trained MultinomialNB for partially labeled corpus"""
+    return incremental_sklearn(nbanchor, trainingset, MultinomialNB)
 
 
 def incremental_free_classifier(freeclassifyinganchor, trainingset):
     """Builds trained FreeClassifier"""
-    # conveniently, free_classifier already does everything we needed, except it
-    # had the wrong number of parameters
+    # conveniently, free_classifier already does everything we needed, except
+    # it had the wrong number of parameters
     return free_classifier(freeclassifyinganchor, trainingset, None)
 
 
@@ -451,11 +519,57 @@ class LogisticAnchor(AbstractClassifyingAnchor):
     """
 
     def __init__(self, rng, numtopics, expgrad_epsilon):
-        super(LogisticAnchor, self).__init__(rng,
-                                             numtopics,
-                                             expgrad_epsilon,
-                                             classtm.labeled.SupervisedAnchorDataset,
-                                             logistic_regression)
+        super(LogisticAnchor, self).__init__(
+            rng,
+            numtopics,
+            expgrad_epsilon,
+            classtm.labeled.SupervisedAnchorDataset,
+            logistic_regression)
+
+
+class SVMAnchor(AbstractClassifyingAnchor):
+    """Algorithm that produces a model for classification tasks
+
+    This should run as per Nguyen et al. (NAACL 2015), with SVM
+    """
+
+    def __init__(self, rng, numtopics, expgrad_epsilon):
+        super(SVMAnchor, self).__init__(
+            rng,
+            numtopics,
+            expgrad_epsilon,
+            classtm.labeled.SupervisedAnchorDataset,
+            svm)
+
+
+class RFAnchor(AbstractClassifyingAnchor):
+    """Algorithm that produces a model for classification tasks
+
+    This should run as per Nguyen et al. (NAACL 2015), with random forest
+    """
+
+    def __init__(self, rng, numtopics, expgrad_epsilon):
+        super(RFAnchor, self).__init__(
+            rng,
+            numtopics,
+            expgrad_epsilon,
+            classtm.labeled.SupervisedAnchorDataset,
+            random_forest)
+
+
+class NBAnchor(AbstractClassifyingAnchor):
+    """Algorithm that produces a model for classification tasks
+
+    This should run as per Nguyen et al. (NAACL 2015), with naive bayes
+    """
+
+    def __init__(self, rng, numtopics, expgrad_epsilon):
+        super(NBAnchor, self).__init__(
+            rng,
+            numtopics,
+            expgrad_epsilon,
+            classtm.labeled.SupervisedAnchorDataset,
+            naive_bayes)
 
 
 class AbstractIncrementalAnchor(AbstractClassifyingAnchor):
@@ -477,7 +591,6 @@ class AbstractIncrementalAnchor(AbstractClassifyingAnchor):
                                                         None,
                                                         classifier)
 
-
     def train(self, dataset, varname, lda_helper, anchors_file):
         """Train model
             * dataset :: classtm.labeled.IncrementalSupervisedAnchorDataset
@@ -493,28 +606,32 @@ class AbstractIncrementalAnchor(AbstractClassifyingAnchor):
                 or None if gram-schmidt anchors should be used
         """
         if isinstance(dataset, classtm.labeled.ClassifiedDataset):
-            self.corpus_to_train_vocab = list(range(len(dataset.origvocabsize)))
+            self.corpus_to_train_vocab = list(
+                range(len(dataset.origvocabsize)))
         else:
             self.corpus_to_train_vocab = list(range(len(dataset.vocab)))
         trainingset = dataset
         self.vocabsize = trainingset.vocab_size
         self.classorder = trainingset.classorder
-        pdim = 1000 if trainingset.vocab_size > 1000 else trainingset.vocab_size
+        pdim = 1000 \
+            if trainingset.vocab_size > 1000 else trainingset.vocab_size
         if anchors_file is None:
             # assumes that trainingset.Q has
             # len(self.corpus_to_train_vocab)+len(self.classorder) columns
             self.anchors = \
-                ankura.anchor.gramschmidt_anchors(trainingset,
-                                                  self.numtopics,
-                                                  id_cands_maker(len(self.classorder),
-                                                                 0.015 * len(trainingset.titles)),
-                                                  project_dim=pdim)
+                ankura.anchor.gramschmidt_anchors(
+                    trainingset,
+                    self.numtopics,
+                    id_cands_maker(len(self.classorder),
+                                   0.015 * len(trainingset.titles)),
+                    project_dim=pdim)
         else:
             # pull user-made anchors from a JSON file of anchors
             user_file = json.load(open(anchors_file, 'r'))
             # we only want the last group of anchors that were chosen
             user_anchors = user_file[len(user_file)-1]['anchors']
-            self.anchors = ankura.anchor.multiword_anchors(trainingset, user_anchors)
+            self.anchors = ankura.anchor.multiword_anchors(trainingset,
+                                                           user_anchors)
             # numtopics is determined at runtime when using user anchors
             self.numtopics = len(self.anchors)
         # relying on fact that recover_topics goes through all rows of Q, the
@@ -531,25 +648,58 @@ class IncrementalLogisticAnchor(AbstractIncrementalAnchor):
     """LogisticAnchor with incrementally labeled corpus"""
 
     def __init__(self, rng, numtopics, expgrad_epsilon):
-        super(IncrementalLogisticAnchor, self).__init__(rng,
-                                                        numtopics,
-                                                        expgrad_epsilon,
-                                                        incremental_logistic_regression)
+        super(IncrementalLogisticAnchor, self).__init__(
+            rng,
+            numtopics,
+            expgrad_epsilon,
+            incremental_logistic_regression)
+
+
+class IncrementalSVMAnchor(AbstractIncrementalAnchor):
+    """SVMAnchor with incrementally labeled corpus"""
+
+    def __init__(self, rng, numtopics, expgrad_epsilon):
+        super(IncrementalSVMAnchor, self).__init__(rng,
+                                                   numtopics,
+                                                   expgrad_epsilon,
+                                                   incremental_svm)
+
+
+class IncrementalRFAnchor(AbstractIncrementalAnchor):
+    """RFAnchor with incrementally labeled corpus"""
+
+    def __init__(self, rng, numtopics, expgrad_epsilon):
+        super(IncrementalRFAnchor, self).__init__(rng,
+                                                  numtopics,
+                                                  expgrad_epsilon,
+                                                  incremental_random_forest)
+
+
+class IncrementalNBAnchor(AbstractIncrementalAnchor):
+    """RFAnchor with incrementally labeled corpus"""
+
+    def __init__(self, rng, numtopics, expgrad_epsilon):
+        super(IncrementalNBAnchor, self).__init__(rng,
+                                                  numtopics,
+                                                  expgrad_epsilon,
+                                                  incremental_naive_bayes)
 
 
 class IncrementalFreeClassifyingAnchor(AbstractIncrementalAnchor):
     """FreeClassifyingAnchor with incrementally labeled corpus"""
 
     def __init__(self, rng, numtopics, expgrad_epsilon):
-        super(IncrementalFreeClassifyingAnchor, self).__init__(rng,
-                                                               numtopics,
-                                                               expgrad_epsilon,
-                                                               incremental_free_classifier)
+        super(IncrementalFreeClassifyingAnchor, self).__init__(
+            rng,
+            numtopics,
+            expgrad_epsilon,
+            incremental_free_classifier)
 
     def predict(self, tokenses):
         """Predict labels"""
         docwses = []
-        doc_words = scipy.sparse.dok_matrix((self.vocabsize-len(self.classorder), len(tokenses)))
+        doc_words = scipy.sparse.dok_matrix(
+            (self.vocabsize-len(self.classorder), len(tokenses)))
         for i, tokens in enumerate(tokenses):
             real_vocab = self._convert_vocab_space(tokens)
             docwses.append(real_vocab)
@@ -560,15 +710,25 @@ class IncrementalFreeClassifyingAnchor(AbstractIncrementalAnchor):
 
 
 FACTORY = {'logistic': LogisticAnchor,
-           'free': FreeClassifyingAnchor}
+           'free': FreeClassifyingAnchor,
+           'svm': SVMAnchor,
+           'rf': RFAnchor,
+           'nb': NBAnchor}
 
 
 INCFACTORY = {'inclog': [IncrementalLogisticAnchor,
                          classtm.labeled.IncrementalSupervisedAnchorDataset],
               'incfree': [IncrementalFreeClassifyingAnchor,
                           classtm.labeled.IncrementalClassifiedDataset],
-              'quickincfree': [IncrementalFreeClassifyingAnchor,
-                               classtm.labeled.QuickIncrementalClassifiedDataset]}
+              'quickincfree': [
+                  IncrementalFreeClassifyingAnchor,
+                  classtm.labeled.QuickIncrementalClassifiedDataset],
+              'incsvm': [IncrementalSVMAnchor,
+                         classtm.labeled.IncrementalSupervisedAnchorDataset],
+              'incrf': [IncrementalRFAnchor,
+                        classtm.labeled.IncrementalSupervisedAnchorDataset],
+              'incnb': [IncrementalNBAnchor,
+                        classtm.labeled.IncrementalSupervisedAnchorDataset]}
 
 
 def build(rng, settings):
@@ -584,5 +744,4 @@ def initialize(rng, dataset, settings):
     expgrad_epsilon = float(settings['expgrad_epsilon'])
     modeltype, datasettype = INCFACTORY[settings['model']]
     return modeltype(rng, numtopics, expgrad_epsilon),\
-           datasettype(dataset, settings)
-
+        datasettype(dataset, settings)
