@@ -11,7 +11,7 @@ common  1500
 pregenerate YES
 
 # experiment options
-group   semisupervisedfree
+group   supervisedlog
 seed    531
 testsize    1000
 startlabeled  100
@@ -19,7 +19,7 @@ endlabeled  1000
 increment   100
 
 # model options
-model   quickincfree
+model   logistic
 numtopics   40
 expgrad_epsilon 1e-4
 lda_helper  variational

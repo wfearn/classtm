@@ -114,6 +114,9 @@ def make_chart(datadir_container):
             smoothing = smoothing[:-9]
             avg_acc = get_average_accuracy(os.path.join(datadir_container, e))
             chart[(weight, smoothing)] = avg_acc
+        if 'logistic' in e:
+            avg_acc = get_average_accuracy(os.path.join(datadir_container, e))
+            chart[('logistic', 'nosmooth')] = avg_acc
     return chart
 
 
