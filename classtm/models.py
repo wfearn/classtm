@@ -14,6 +14,7 @@ from scipy.sparse import csc_matrix
 import activetm.tech.anchor
 import ankura.pipeline
 import classtm.labeled
+import classtm.classifier
 
 
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -512,6 +513,23 @@ def incremental_free_classifier(freeclassifyinganchor, trainingset):
     return free_classifier(freeclassifyinganchor, trainingset, None)
 
 
+def incremental_tsvm(tsvmanchor, trainingset):
+    """Builds trained TSVM for partially labeled corpus"""
+    docwses = []
+    knownresp = []
+    for title in trainingset.titles:
+        docwses.append(trainingset.doc_tokens(trainingset.titlesorder[title]))
+        knownresp.append(
+            trainingset.labels[title]
+            if title in trainingset.labels else 'unknown')
+    result = classtm.classifier.TSVM(
+        tsvmanchor.lda.varname,
+        tsvmanchor.classorder)
+    features = tsvmanchor.predict_topics(docwses)
+    result.fit(features, np.array(knownresp))
+    return result
+
+
 class LogisticAnchor(AbstractClassifyingAnchor):
     """Algorithm that produces a model for classification tasks
 
@@ -685,6 +703,16 @@ class IncrementalNBAnchor(AbstractIncrementalAnchor):
                                                   incremental_naive_bayes)
 
 
+class IncrementalTSVMAnchor(AbstractIncrementalAnchor):
+    """Incrementally labeled corpus with transductive SVM"""
+
+    def __init__(self, rng, numtopics, expgrad_epsilon):
+        super(IncrementalTSVMAnchor, self).__init__(rng,
+                                                    numtopics,
+                                                    expgrad_epsilon,
+                                                    incremental_tsvm)
+
+
 class IncrementalFreeClassifyingAnchor(AbstractIncrementalAnchor):
     """FreeClassifyingAnchor with incrementally labeled corpus"""
 
@@ -728,7 +756,9 @@ INCFACTORY = {'inclog': [IncrementalLogisticAnchor,
               'incrf': [IncrementalRFAnchor,
                         classtm.labeled.IncrementalSupervisedAnchorDataset],
               'incnb': [IncrementalNBAnchor,
-                        classtm.labeled.IncrementalSupervisedAnchorDataset]}
+                        classtm.labeled.IncrementalSupervisedAnchorDataset],
+              'inctsvm': [IncrementalTSVMAnchor,
+                          classtm.labeled.IncrementalSupervisedAnchorDataset]}
 
 
 def build(rng, settings):
