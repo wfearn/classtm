@@ -11,7 +11,7 @@ common  1500
 pregenerate YES
 
 # experiment options
-group   supervisedfree
+group   supervisedfreetwojobs
 seed    531
 testsize    1000
 startlabeled  100

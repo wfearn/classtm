@@ -16,11 +16,13 @@ from classtm import evaluate
 import submain
 
 
-def kill_at_sixty():
+def kill_at_sixty(outprefix):
     """Kills the program at 60 minutes"""
     # Should sleep 60 minutes, 60*60 is 3600 seconds
     seconds_to_sleep = 3600
     time.sleep(seconds_to_sleep)
+    with open(outprefix+'.results', 'wb') as ofh:
+        pickle.dump('Hit the 60-minute mark, ran out of time!', ofh)
     print('\n\nHit the 60-minute mark, ran out of time!\n\n')
     os._exit(os.EX_OK)
 
@@ -97,7 +99,7 @@ def _run():
         results = []
         labeled_count = startlabeled
         # this thread will kill the program after 60 minutes
-#        thread = Thread(target=kill_at_sixty,daemon=True)
+#        thread = Thread(target=kill_at_sixty,args=(outprefix),daemon=True)
 #        thread.start()
         while len(incrementaldataset.labels) <= endlabeled:
             start = time.time()

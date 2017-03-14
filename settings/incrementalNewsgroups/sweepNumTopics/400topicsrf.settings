@@ -11,16 +11,16 @@ common  1500
 pregenerate YES
 
 # experiment options
-group   semisupervisedlogonejob
+group   400topicsrf
 seed    531
 testsize    1000
-startlabeled  100
-endlabeled  1000
-increment   100
+startlabeled  5000
+endlabeled  5000
+increment   1
 
 # model options
-model   inclog
-numtopics   40
+model   incrf
+numtopics   400
 expgrad_epsilon 1e-4
 lda_helper  variational
 label_weight  500
