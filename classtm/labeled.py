@@ -110,9 +110,12 @@ class ClassifiedDataset(AbstractClassifiedDataset):
             tmp = scipy.sparse.lil_matrix((len(self._vocab), len(self.titles)),
                                           dtype=self._docwords.dtype)
             tmp[:self.origvocabsize, :] = self._docwords
+            # TODO: Add smoothing the right way
+            tmp[self.origvocabsize:, :] = 0.01
             for docnum, title in enumerate(self.titles):
                 label = self.labels[title]
-                tmp[self.origvocabsize+self.classorder[label], docnum] = 1
+                # TODO: Change this to put label_weight in
+                tmp[self.origvocabsize+self.classorder[label], docnum] = 500
             self._docwords = tmp.tocsc()
         # when compute_cooccurrences gets called, we should get the Q we want
 
