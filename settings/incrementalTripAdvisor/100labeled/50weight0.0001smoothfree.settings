@@ -20,7 +20,7 @@ increment   1
 
 # model options
 model   quickincfree
-numtopics   40
+numtopics   100
 expgrad_epsilon 1e-4
 lda_helper  variational
 label_weight  50

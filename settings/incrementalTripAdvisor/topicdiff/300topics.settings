@@ -1,5 +1,5 @@
 # corpus options
-pickle  newsgroups.coarse.class.pickle
+pickle  tripadvisor.class.binary.pickle
 corpus  /local/cojoco/data/newsgroups-dedup/*/*
 
 # filter options
@@ -11,17 +11,17 @@ common  1500
 pregenerate YES
 
 # experiment options
-group   supervisedlog
+group   1weight-0.0001smoothing
 seed    531
 testsize    1000
 startlabeled  100
-endlabeled  1500
-increment   100
+endlabeled  100
+increment   1
 
 # model options
-model   logistic
-numtopics   40
+model   quickincfree
+numtopics   300
 expgrad_epsilon 1e-4
 lda_helper  variational
-label_weight  500
-smoothing   0.01
+label_weight  1
+smoothing   0.0001
