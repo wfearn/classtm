@@ -1,7 +1,9 @@
 """Models for use in ClassTM"""
+import datetime
 import os
 import subprocess
 import json
+import time
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -14,6 +16,7 @@ from scipy.sparse import csc_matrix
 import activetm.tech.anchor
 import ankura.pipeline
 import classtm.labeled
+import classtm.classifier
 
 
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -302,6 +305,7 @@ class AbstractClassifyingAnchor:
         self.classorder = trainingset.classorder
         pdim = 1000 \
             if trainingset.vocab_size > 1000 else trainingset.vocab_size
+        start = time.time()
         if anchors_file is None:
             self.anchors = \
                 ankura.anchor.gramschmidt_anchors(
@@ -325,8 +329,11 @@ class AbstractClassifyingAnchor:
         self.topics = ankura.topic.recover_topics(trainingset,
                                                   self.anchors,
                                                   self.expgrad_epsilon)
+        end = time.time()
+        anchorwords_time = datetime.timedelta(seconds=end-start)
         self.lda = lda_helper(self.topics, varname)
-        self.predictor = self.classifier(self, trainingset, knownresp)
+        self.predictor, applytrain_time, train_time = self.classifier(self, trainingset, knownresp)
+        return anchorwords_time, applytrain_time, train_time
 
     def predict(self, tokenses):
         """Predict labels"""
@@ -389,8 +396,10 @@ def free_classifier(freeclassifyinganchor, trainingset, _):
     classcount = len(trainingset.classorder)
     class_topic_weights = freeclassifyinganchor.topics[-classcount:]
     class_given_word = trainingset.Q[:-classcount, -classcount:].T
+    applytrain_time = datetime.timedelta(seconds=0)
+    train_time = datetime.timedelta(seconds=0)
     return FreeClassifier(class_topic_weights, class_given_word,
-                          freeclassifyinganchor.classorder)
+                          freeclassifyinganchor.classorder), applytrain_time, train_time
 
 
 # pylint:disable-msg=too-many-instance-attributes
@@ -433,13 +442,19 @@ def build_train_adapter(dataset, train_doc_ids, knownresp):
 
 def sklearn_classifier(anchor, trainingset, knownresp, classifier):
     """Builds trained classifier"""
+    start = time.time()
     docwses = []
     for i in range(len(trainingset.titles)):
         docwses.append(trainingset.doc_tokens(i))
-    result = classifier()
     features = anchor.predict_topics(docwses)
+    end = time.time()
+    applytrain_time = datetime.timedelta(seconds=end-start)
+    start = time.time()
+    result = classifier()
     result.fit(features, np.array(knownresp))
-    return result
+    end = time.time()
+    train_time = datetime.timedelta(seconds=end-start)
+    return result, applytrain_time, train_time
 
 
 def logistic_regression(logisticanchor, trainingset, knownresp):
@@ -470,15 +485,21 @@ def naive_bayes(nbanchor, trainingset, knownresp):
 
 def incremental_sklearn(anchor, trainingset, classifier):
     """Builds trained classifier for partially labeled corpus"""
+    start = time.time()
     docwses = []
     knownresp = []
     for title, label in trainingset.labels.items():
         docwses.append(trainingset.doc_tokens(trainingset.titlesorder[title]))
         knownresp.append(label)
-    result = classifier()
     features = anchor.predict_topics(docwses)
+    end = time.time()
+    applytrain_time = datetime.timedelta(seconds=end-start)
+    start = time.time()
+    result = classifier()
     result.fit(features, np.array(knownresp))
-    return result
+    end = time.time()
+    train_time = datetime.timedelta(seconds=end-start)
+    return result, applytrain_time, train_time
 
 
 def incremental_logistic_regression(logisticanchor, trainingset):
@@ -510,6 +531,29 @@ def incremental_free_classifier(freeclassifyinganchor, trainingset):
     # conveniently, free_classifier already does everything we needed, except
     # it had the wrong number of parameters
     return free_classifier(freeclassifyinganchor, trainingset, None)
+
+
+def incremental_tsvm(tsvmanchor, trainingset):
+    """Builds trained TSVM for partially labeled corpus"""
+    start = time.time()
+    docwses = []
+    knownresp = []
+    for title in trainingset.titles:
+        docwses.append(trainingset.doc_tokens(trainingset.titlesorder[title]))
+        knownresp.append(
+            trainingset.labels[title]
+            if title in trainingset.labels else 'unknown')
+    features = tsvmanchor.predict_topics(docwses)
+    end = time.time()
+    applytrain_time = datetime.timedelta(seconds=end-start)
+    start = time.time()
+    result = classtm.classifier.TSVM(
+        tsvmanchor.lda.varname,
+        tsvmanchor.classorder)
+    result.fit(features, np.array(knownresp))
+    end = time.time()
+    train_time = datetime.timedelta(seconds=end-start)
+    return result, applytrain_time, train_time
 
 
 class LogisticAnchor(AbstractClassifyingAnchor):
@@ -615,6 +659,7 @@ class AbstractIncrementalAnchor(AbstractClassifyingAnchor):
         self.classorder = trainingset.classorder
         pdim = 1000 \
             if trainingset.vocab_size > 1000 else trainingset.vocab_size
+        start = time.time()
         if anchors_file is None:
             # assumes that trainingset.Q has
             # len(self.corpus_to_train_vocab)+len(self.classorder) columns
@@ -640,8 +685,11 @@ class AbstractIncrementalAnchor(AbstractClassifyingAnchor):
         self.topics = ankura.topic.recover_topics(trainingset,
                                                   self.anchors,
                                                   self.expgrad_epsilon)
+        end = time.time()
+        anchorwords_time = datetime.timedelta(seconds=end-start)
         self.lda = lda_helper(self.topics, varname)
-        self.predictor = self.classifier(self, trainingset)
+        self.predictor, applytrain_time, train_time = self.classifier(self, trainingset)
+        return anchorwords_time, applytrain_time, train_time
 
 
 class IncrementalLogisticAnchor(AbstractIncrementalAnchor):
@@ -683,6 +731,16 @@ class IncrementalNBAnchor(AbstractIncrementalAnchor):
                                                   numtopics,
                                                   expgrad_epsilon,
                                                   incremental_naive_bayes)
+
+
+class IncrementalTSVMAnchor(AbstractIncrementalAnchor):
+    """Incrementally labeled corpus with transductive SVM"""
+
+    def __init__(self, rng, numtopics, expgrad_epsilon):
+        super(IncrementalTSVMAnchor, self).__init__(rng,
+                                                    numtopics,
+                                                    expgrad_epsilon,
+                                                    incremental_tsvm)
 
 
 class IncrementalFreeClassifyingAnchor(AbstractIncrementalAnchor):
@@ -728,7 +786,9 @@ INCFACTORY = {'inclog': [IncrementalLogisticAnchor,
               'incrf': [IncrementalRFAnchor,
                         classtm.labeled.IncrementalSupervisedAnchorDataset],
               'incnb': [IncrementalNBAnchor,
-                        classtm.labeled.IncrementalSupervisedAnchorDataset]}
+                        classtm.labeled.IncrementalSupervisedAnchorDataset],
+              'inctsvm': [IncrementalTSVMAnchor,
+                          classtm.labeled.IncrementalSupervisedAnchorDataset]}
 
 
 def build(rng, settings):
