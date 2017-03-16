@@ -99,19 +99,18 @@ def _run():
         results = []
         labeled_count = startlabeled
         # this thread will kill the program after 60 minutes
-#        thread = Thread(target=kill_at_sixty,args=(outprefix),daemon=True)
-#        thread.start()
+        thread = Thread(target=kill_at_sixty,args=(outprefix),daemon=True)
+        thread.start()
         while len(incrementaldataset.labels) <= endlabeled:
             anchors_file = settings.get('anchors_file')
-            anchorwords_time, applytrain_time, train_time = model.train(incrementaldataset,
-                                                                        outprefix,
-                                                                        lda_helper,
-                                                                        anchors_file)
+            anchorwords_time, applytrain_time, train_time = model.train(incrementaldataset, outprefix,
+                        lda_helper, anchors_file)
             # print('Trained model')
+
             confusion_matrix, devtest_time = evaluate.confusion_matrix(model,
-                                                                       test_words,
-                                                                       test_labels,
-                                                                       dataset.classorder)
+                                                         test_words,
+                                                         test_labels,
+                                                         dataset.classorder)
             results.append({'init_time': init_time,
                             'confusion_matrix': confusion_matrix,
                             'labeled_count': labeled_count,

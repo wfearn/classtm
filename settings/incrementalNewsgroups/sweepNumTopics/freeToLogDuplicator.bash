@@ -2,7 +2,7 @@
 
 for file in *free.settings;
 do
-  cp $file ${file/free/nb};
-  sed -i 's/quickincfree/incnb/' ${file/free/nb}
-  sed -i 's/free/nb/' ${file/free/nb}
+  cp $file ${file/free/tsvm};
+  sed -i 's/quickincfree/inctsvm/' ${file/free/tsvm}
+  sed -i 's/free/tsvm/' ${file/free/tsvm}
 done

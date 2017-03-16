@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#SBATCH --time=06:00:00   # walltime
+#SBATCH --time=01:00:00   # walltime
 #SBATCH --ntasks=24   # number of processor cores (i.e. tasks)
 #SBATCH --nodes=1   # number of nodes
-#SBATCH --mem-per-cpu=2560M   # memory per CPU core
+#SBATCH --mem-per-cpu=2G   # memory per CPU core
 #SBATCH -p m8
 #SBATCH -J "Newsgroups Benchmark"   # job name
 #SBATCH --mail-user=cojoco@gmail.com   # email address
@@ -25,11 +25,11 @@ export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
 # LOAD MODULES, INSERT CODE, AND RUN YOUR PROGRAMS HERE
 if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]
   then
-    echo "Usage: sbatch main.slurm random_seed min_job_num max_job_num {log,free, nb, rf, svm, tsvm}"
+    echo "Usage: sbatch sup_main.slurm random_seed min_job_num max_job_num"
     exit 1
 fi
-settings="${HOME}/classtm/settings/incrementalNewsgroups/sweepLabeled/newsgroupsNumLabeledGraph${4}.settings"
-outputdir="/fslhome/cojoco/compute/free/newsLabels/"
+settings="${HOME}/classtm/settings/incrementalNewsgroups/sweepLabeled/newsgroupsSupervised${4}.settings"
+outputdir="/fslhome/cojoco/classtm/test/"
 module load python/3/5
 
 . "${HOME}/classtm/ENV/bin/activate"
@@ -42,6 +42,6 @@ for ((i=$job_start_num;i<=$job_end_num;i++))
   do
     randomnum=$RANDOM
     echo "random number was $randomnum"
-    python3 incremental_submain.py $settings $outputdir $i $randomnum &
+    python3 comparesuper.py $settings $outputdir $i $randomnum &
   done
 wait
