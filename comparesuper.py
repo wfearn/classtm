@@ -82,31 +82,26 @@ def _run():
             train_labels.append(dataset.labels[dataset.titles[docid]])
         results = []
         while True:
-            start = time.time()
             anchors_file = settings.get('anchors_file')
-            model.train(
-                dataset,
-                unlabeled_doc_ids[:labeled_count],
-                train_labels,
-                outprefix,
-                lda_helper,
-                anchors_file)
-            end = time.time()
-            train_time = datetime.timedelta(seconds=end-start)
+            anchorwords_time, applytrain_time, train_time = model.train(dataset,
+                                                                        unlabeled_doc_ids[:labeled_count],
+                                                                        train_labels,
+                                                                        outprefix,
+                                                                        lda_helper,
+                                                                        anchors_file)
             # print('Trained model')
 
-            start = time.time()
-            confusion_matrix = evaluate.confusion_matrix(model,
-                                                         test_words,
-                                                         test_labels,
-                                                         dataset.classorder)
-            end = time.time()
-            eval_time = datetime.timedelta(seconds=end-start)
+            confusion_matrix, devtest_time = evaluate.confusion_matrix(model,
+                                                                       test_words,
+                                                                       test_labels,
+                                                                       dataset.classorder)
             results.append({'init_time': init_time,
                             'confusion_matrix': confusion_matrix,
                             'labeled_count': labeled_count,
+                            'anchorwords_time': anchorwords_time,
+                            'applytrain_time': applytrain_time,
                             'train_time': train_time,
-                            'eval_time': eval_time,
+                            'devtest_time': devtest_time,
                             'model': model})
             if labeled_count >= endlabeled or labeled_count >= len(unlabeled_doc_ids):
                 break

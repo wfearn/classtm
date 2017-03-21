@@ -28,8 +28,8 @@ if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]
     echo "Usage: sbatch sup_main.slurm random_seed min_job_num max_job_num"
     exit 1
 fi
-settings="${HOME}/classtm/settings/incrementalNewsgroups/sweepLabeled/newsgroupsSupervised${4}.settings"
-outputdir="/fslhome/cojoco/classtm/test/"
+settings="${HOME}/classtm/settings/incrementalNewsgroups/sweepLabeled/newsgroupsSupervisedLong${4}.settings"
+outputdir="/fslhome/cojoco/compute/free/newsSup/"
 module load python/3/5
 
 . "${HOME}/classtm/ENV/bin/activate"
