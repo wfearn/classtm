@@ -30,6 +30,7 @@ def get_dataset(settings):
     dataset = ankura.pipeline.combine_words(dataset, settings['namestop'], '<name>')
     dataset = ankura.pipeline.filter_rarewords(dataset, int(settings['rare']))
     dataset = ankura.pipeline.filter_commonwords(dataset, int(settings['common']))
+    dataset = ankura.pipeline.filter_smalldocs(dataset, 1)
     if settings['pregenerate'] == 'YES':
         dataset = ankura.pipeline.pregenerate_doc_tokens(dataset)
     return dataset
