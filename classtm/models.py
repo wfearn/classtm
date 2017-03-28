@@ -154,7 +154,7 @@ class FreeClassifier:
         epsilon = 1e-7
         modified_weights = weights + epsilon
         column_sums = modified_weights.sum(axis=0)
-        self.weights = weights / column_sums
+        self.weights = modified_weights / column_sums
         self.classorder = classorder
         self.orderedclasses = classtm.labeled.orderclasses(self.classorder)
         # Added by Connor to get word features working
