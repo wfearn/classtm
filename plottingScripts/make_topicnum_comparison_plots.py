@@ -173,11 +173,16 @@ def make_plots(outputdir, dirs):
                 data['rf'].extend(get_data(dir))
             else:
                 data['rf'] = get_data(dir)
-        elif dir[-3:] == 'svm':
+        elif dir[-3:] == 'svm' and dir[-4:] != 'tsvm':
             if 'svm' in data.keys():
                 data['svm'].extend(get_data(dir))
             else:
                 data['svm'] = get_data(dir)
+        elif dir[-4:] == 'tsvm' and dir[-5:] != '_tsvm':
+            if 'tsvm' in data.keys():
+                data['tsvm'].extend(get_data(dir))
+            else:
+                data['tsvm'] = get_data(dir)
         else:
             print('directory', dir, 'not being used in the graph')
 

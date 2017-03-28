@@ -102,26 +102,23 @@ def _run():
 #        thread = Thread(target=kill_at_sixty,args=(outprefix),daemon=True)
 #        thread.start()
         while len(incrementaldataset.labels) <= endlabeled:
-            start = time.time()
             anchors_file = settings.get('anchors_file')
-            model.train(incrementaldataset, outprefix,
-                        lda_helper, anchors_file)
-            end = time.time()
-            train_time = datetime.timedelta(seconds=end-start)
+            anchorwords_time, applytrain_time, train_time = model.train(incrementaldataset,
+                                                                        outprefix,
+                                                                        lda_helper,
+                                                                        anchors_file)
             # print('Trained model')
-
-            start = time.time()
-            confusion_matrix = evaluate.confusion_matrix(model,
-                                                         test_words,
-                                                         test_labels,
-                                                         dataset.classorder)
-            end = time.time()
-            eval_time = datetime.timedelta(seconds=end-start)
+            confusion_matrix, devtest_time = evaluate.confusion_matrix(model,
+                                                                       test_words,
+                                                                       test_labels,
+                                                                       dataset.classorder)
             results.append({'init_time': init_time,
                             'confusion_matrix': confusion_matrix,
                             'labeled_count': labeled_count,
+                            'anchorwords_time': anchorwords_time,
+                            'applytrain_time': applytrain_time,
                             'train_time': train_time,
-                            'eval_time': eval_time,
+                            'devtest_time': devtest_time,
                             'model': model})
             if len(incrementaldataset.labels) >= len(train_doc_ids):
                 break
