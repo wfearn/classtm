@@ -337,10 +337,10 @@ class AbstractClassifyingAnchor:
 
     def predict(self, tokenses):
         """Predict labels"""
-        docwses = []
-        for tokens in tokenses:
-            docwses.append(self._convert_vocab_space(tokens))
-        features = self.predict_topics(docwses)
+#        docwses = []
+        features = word_topic_features(tokenses, self.topics, self.vocabsize)
+#            docwses.append(self._convert_vocab_space(tokens))
+#        features = self.predict_topics(docwses)
         return self.predictor.predict(features)
 
     def _convert_vocab_space(self, tokens):
@@ -440,13 +440,25 @@ def build_train_adapter(dataset, train_doc_ids, knownresp):
                            classtm.labeled.SupervisedAnchorDataset)
 
 
+def word_topic_features(docwses, topics, vocabsize, alpha=0.01):
+    """Gets word-topic feature pairs"""
+    T = topics.shape[1]
+    features = np.zeros((len(docwses), T*vocabsize), dtype=np.int32)
+    for docnum, docws in enumerate(docwses):
+        _, assignments = ankura.topic.predict_topics(topics, docws, alpha)
+        for token, topic in zip(docws, assignments):
+            index = token * T + topic
+            features[docnum, index] += 1
+    return features
+
+
 def sklearn_classifier(anchor, trainingset, knownresp, classifier):
     """Builds trained classifier"""
     start = time.time()
     docwses = []
     for i in range(len(trainingset.titles)):
         docwses.append(trainingset.doc_tokens(i))
-    features = anchor.predict_topics(docwses)
+    features = word_topic_features(docwses, trainingset.topics, trainingset.vocab_size)
     end = time.time()
     applytrain_time = datetime.timedelta(seconds=end-start)
     start = time.time()
@@ -491,7 +503,7 @@ def incremental_sklearn(anchor, trainingset, classifier):
     for title, label in trainingset.labels.items():
         docwses.append(trainingset.doc_tokens(trainingset.titlesorder[title]))
         knownresp.append(label)
-    features = anchor.predict_topics(docwses)
+    features = word_topic_features(docwses, anchor.topics, trainingset.vocab_size)
     end = time.time()
     applytrain_time = datetime.timedelta(seconds=end-start)
     start = time.time()
