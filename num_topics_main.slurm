@@ -28,16 +28,16 @@ if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]
     echo "Usage: sbatch num_topics_main.slurm num_topics log/free/nb/rf/svm/tsvm random_seed min_job_num max_job_num"
     exit 1
 fi
-settings="${HOME}/classtm/settings/incrementalNewsgroups/sweepNumTopics/$1topics$2.settings"
-#outputdir="/fslhome/cojoco/compute/free/newsTopics/$1topics$2/"
-outputdir="/fslhome/cojoco/classtm/test/topicnums/"
+#outputdir="/fslhome/cojoco/classtm/test/topicnums/"
 module load python/3/5
 
 . "${HOME}/classtm/ENV/bin/activate"
 
-RANDOM=$3
-job_start_num=$4
-job_end_num=$5
+RANDOM=$1
+job_start_num=$2
+job_end_num=$3
+settings=$4
+outputdir=$5
 
 for ((i=$job_start_num;i<=$job_end_num;i++))
   do
