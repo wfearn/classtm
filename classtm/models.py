@@ -448,7 +448,7 @@ def word_topic_features(docwses, topics, vocabsize, alpha=0.01):
         _, assignments = ankura.topic.predict_topics(topics, docws, alpha)
         for token, topic in zip(docws, assignments):
             index = token * T + topic
-            features[docnum, index] += 1
+            features[docnum, int(index)] += 1
     return features
 
 
@@ -555,7 +555,7 @@ def incremental_tsvm(tsvmanchor, trainingset):
         knownresp.append(
             trainingset.labels[title]
             if title in trainingset.labels else 'unknown')
-    features = tsvmanchor.predict_topics(docwses)
+    features = word_topic_features(docwses, tsvmanchor.topics, trainingset.vocab_size)
     end = time.time()
     applytrain_time = datetime.timedelta(seconds=end-start)
     start = time.time()
