@@ -99,7 +99,7 @@ def _run():
         results = []
         labeled_count = startlabeled
         # this thread will kill the program after 60 minutes
-        thread = Thread(target=kill_at_sixty,args=(outprefix),daemon=True)
+        thread = Thread(target=kill_at_sixty,args=(outprefix,),daemon=True)
         thread.start()
         while len(incrementaldataset.labels) <= endlabeled:
             anchors_file = settings.get('anchors_file')
