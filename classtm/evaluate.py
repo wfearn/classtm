@@ -20,3 +20,14 @@ def confusion_matrix(model, words, labels, classorder):
         result[label][prediction] += 1
     return result, devtest_time
 
+
+def accuracy(confusion_matrix):
+    """Calculate true positive rate based on confusion_matrix"""
+    total = 0
+    correct = 0
+    for label, preds in confusion_matrix.items():
+        for pred, count in preds.items():
+            if pred == label:
+                correct += count
+            total += count
+    return correct / total
