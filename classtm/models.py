@@ -175,6 +175,8 @@ class FreeClassifier:
         topic_score = topic_score / topic_score.sum(axis=0)
         word_score = csc_matrix.dot(self.class_given_word, doc_words)
         word_score_sum = word_score.sum(axis=0)
+        # wherever sums are 0, make no-op division
+        word_score_sum[word_score_sum == 0] = 1
         word_score = word_score / word_score_sum
         score = topic_score + word_score
         # axis tells argmax to choose the highest row per column
