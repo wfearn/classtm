@@ -42,11 +42,12 @@ def get_lda_helper(lda_type):
         raise ValueError("No lda_helper of type " + lda_type)
 
 
-#pylint:disable-msg=too-many-locals
+# pylint:disable-msg=too-many-locals
 def _run():
     parser = argparse.ArgumentParser(description='Job runner for ClassTM')
-    parser.add_argument('settings', help=\
-            '''the path to a file containing settings, as described in \
+    parser.add_argument(
+            'settings',
+            help='''the path to a file containing settings, as described in \
             README.md in the root ClassTM directory''')
     parser.add_argument('outputdir', help='directory for output')
     parser.add_argument('label', help='identifying label')
@@ -101,8 +102,8 @@ def _run():
 
         start = time.time()
         anchors_file = settings.get('anchors_file')
-        model.train(dataset, train_doc_ids, known_labels, outprefix, lda_helper,
-                    anchors_file)
+        model.train(dataset, train_doc_ids, known_labels, outprefix,
+                    lda_helper, anchors_file)
         end = time.time()
         train_time = datetime.timedelta(seconds=end-start)
         # print('Trained model')
@@ -129,4 +130,3 @@ def _run():
 
 if __name__ == '__main__':
     _run()
-
