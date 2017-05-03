@@ -412,6 +412,11 @@ class SupervisedAnchorDataset(AbstractClassifiedDataset):
                                                       classorder)
         # precompute \bar{Q}
         ankura.pipeline.Dataset.compute_cooccurrences(self)
+        # numpy doesn't broadcast across rows, so we make the rows into columns
+        # to perform the proper normalization before turning the columns back
+        # into rows
+        self._dataset_cooccurrences = \
+            (self._cooccurrences.T / self._cooccurrences.T.sum(axis=0)).T
         # fool ankura into calling compute_cooccurrences
         self._cooccurrences = None
 
