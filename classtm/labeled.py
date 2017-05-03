@@ -368,7 +368,7 @@ class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
             # reset new labels
             self.newlabels = {}
         self._cooccurrences[
-            (epsilon < self._cooccurrences) & (self._cooccurrences < 0)] = 0
+            (-epsilon < self._cooccurrences) & (self._cooccurrences < 0)] = 0
 
     def label_document(self, title, label):
         """Label a document in this corpus
