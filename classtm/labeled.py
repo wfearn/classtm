@@ -212,7 +212,9 @@ def get_label_weight_function(label_weight):
 class IncrementalClassifiedDataset(AbstractParameterizedClassifiedDataset):
     """ClassifiedDataset for incremental case"""
 
-    def __init__(self, dataset, smoothing, label_weight):
+    def __init__(self, dataset, settings):
+        smoothing = float(settings['smoothing'])
+        label_weight = settings['label_weight']
         super(IncrementalClassifiedDataset, self).__init__(dataset,
                                                            {},
                                                            {},
@@ -301,10 +303,9 @@ def get_doc_co_counts(sparsevec):
 class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
     """ClassifiedDataset for incremental labeling using quick Q building"""
 
-    def __init__(self, dataset, smoothing, label_weight):
+    def __init__(self, dataset, settings):
         super(QuickIncrementalClassifiedDataset, self).__init__(dataset,
-                                                                smoothing,
-                                                                label_weight)
+                                                                settings)
         self.newlabels = {}
         self.prevq = None
 
