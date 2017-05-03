@@ -88,21 +88,38 @@ class AbstractClassifiedDataset(ankura.pipeline.Dataset):
     """For use with classtm models"""
 
     def __init__(self, dataset, labels, classorder):
-        super(AbstractClassifiedDataset, self).__init__(dataset.docwords,
-                                                        dataset.vocab,
-                                                        dataset.titles,
-                                                        metadata=dataset.metadata)
+        super(AbstractClassifiedDataset, self).__init__(
+            dataset.docwords,
+            dataset.vocab,
+            dataset.titles,
+            metadata=dataset.metadata)
         self.labels = labels
         self.classorder = classorder
         self.orderedclasses = orderclasses(self.classorder)
 
 
-#pylint:disable-msg=too-few-public-methods
-class ClassifiedDataset(AbstractClassifiedDataset):
+class AbstractParameterizedClassifiedDataset(AbstractClassifiedDataset):
+    """When you want parameters on how Q gets constructed"""
+
+    def __init__(self, dataset, labels, classorder, smoothing, label_weight):
+        super(AbstractParameterizedClassifiedDataset, self).__init__(
+            dataset,
+            labels,
+            classorder)
+        self.smoothing = smoothing
+        self.label_weight = get_label_weight_function(label_weight)
+
+
+# pylint:disable-msg=too-few-public-methods
+class ClassifiedDataset(AbstractParameterizedClassifiedDataset):
     """Classified, as in data is labeled with classes"""
 
-    def __init__(self, dataset, labels, classorder):
-        super(ClassifiedDataset, self).__init__(dataset, labels, classorder)
+    def __init__(self, dataset, labels, classorder, smoothing, label_weight):
+        super(ClassifiedDataset, self).__init__(dataset,
+                                                labels,
+                                                classorder,
+                                                smoothing,
+                                                label_weight)
         # add pseudo labels if necessary
         if not isinstance(dataset, ClassifiedDataset):
             self.origvocabsize = len(self._vocab)
@@ -110,9 +127,13 @@ class ClassifiedDataset(AbstractClassifiedDataset):
             tmp = scipy.sparse.lil_matrix((len(self._vocab), len(self.titles)),
                                           dtype=self._docwords.dtype)
             tmp[:self.origvocabsize, :] = self._docwords
+            tmp[self.origvocabsize:, :] = self.smoothing
             for docnum, title in enumerate(self.titles):
                 label = self.labels[title]
-                tmp[self.origvocabsize+self.classorder[label], docnum] = 1
+                tmp[self.origvocabsize+self.classorder[label], docnum] = \
+                    self.label_weight(
+                        self._docwords[:self.origvocabsize, docnum].sum(),
+                        self._docwords.shape[1])
             self._docwords = tmp.tocsc()
         # when compute_cooccurrences gets called, we should get the Q we want
 
@@ -125,7 +146,7 @@ class ClassifiedDataset(AbstractClassifiedDataset):
         for token_id, count in zip(token_ids, counts):
             if token_id < self.origvocabsize:
                 tokens.extend([token_id] * count)
-        #pylint:disable-msg=no-member
+        # pylint:disable-msg=no-member
         rng.shuffle(tokens)
 
         self._tokens[doc_id] = tokens
@@ -187,15 +208,17 @@ def get_label_weight_function(label_weight):
     return return_value(float(label_weight))
 
 
-#pylint:disable-msg=too-many-instance-attributes
-class IncrementalClassifiedDataset(AbstractClassifiedDataset):
+# pylint:disable-msg=too-many-instance-attributes
+class IncrementalClassifiedDataset(AbstractParameterizedClassifiedDataset):
     """ClassifiedDataset for incremental case"""
 
-    def __init__(self, dataset, settings):
-        super(IncrementalClassifiedDataset, self).__init__(dataset, {}, {})
+    def __init__(self, dataset, smoothing, label_weight):
+        super(IncrementalClassifiedDataset, self).__init__(dataset,
+                                                           {},
+                                                           {},
+                                                           smoothing,
+                                                           label_weight)
         self.origvocabsize = len(self._vocab)
-        self.smoothing = float(settings['smoothing'])
-        self.label_weight = get_label_weight_function(settings['label_weight'])
         self.titlesorder = get_titles_order(self.titles)
 
     def doc_tokens(self, doc_id, rng=np.random):
@@ -207,7 +230,7 @@ class IncrementalClassifiedDataset(AbstractClassifiedDataset):
         for token_id, count in zip(token_ids, counts):
             if token_id < self.origvocabsize:
                 tokens.extend([token_id] * count)
-        #pylint:disable-msg=no-member
+        # pylint:disable-msg=no-member
         rng.shuffle(tokens)
 
         self._tokens[doc_id] = tokens
@@ -240,7 +263,8 @@ class IncrementalClassifiedDataset(AbstractClassifiedDataset):
             # resize docwords matrix only when number of classes increases
             tmp = scipy.sparse.lil_matrix((len(self._vocab), len(self.titles)),
                                           dtype=np.float)
-            tmp[:self.origvocabsize, :] = self._docwords[:self.origvocabsize, :]
+            tmp[:self.origvocabsize, :] = \
+                self._docwords[:self.origvocabsize, :]
             tmp[self.origvocabsize:, :] = self.smoothing
             for curtitle, curlabel in self.labels.items():
                 self._label_helper(tmp, curtitle, curlabel)
@@ -277,13 +301,14 @@ def get_doc_co_counts(sparsevec):
 class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
     """ClassifiedDataset for incremental labeling using quick Q building"""
 
-    def __init__(self, dataset, settings):
+    def __init__(self, dataset, smoothing, label_weight):
         super(QuickIncrementalClassifiedDataset, self).__init__(dataset,
-                                                                settings)
+                                                                smoothing,
+                                                                label_weight)
         self.newlabels = {}
         self.prevq = None
 
-    #pylint:disable-msg=invalid-name
+    # pylint:disable-msg=invalid-name
     def _build_miniq(self, docnums):
         """Builds Q with just the documents in docnums
 
@@ -367,7 +392,8 @@ class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
             # resize docwords matrix only when number of classes increases
             tmp = scipy.sparse.lil_matrix((len(self._vocab), len(self.titles)),
                                           dtype=np.float)
-            tmp[:self.origvocabsize, :] = self._docwords[:self.origvocabsize, :]
+            tmp[:self.origvocabsize, :] = \
+                self._docwords[:self.origvocabsize, :]
             tmp[self.origvocabsize:, :] = self.smoothing
             for curtitle, curlabel in self.labels.items():
                 self._label_helper(tmp, curtitle, curlabel)
@@ -386,7 +412,6 @@ class SupervisedAnchorDataset(AbstractClassifiedDataset):
                                                       classorder)
         # precompute \bar{Q}
         ankura.pipeline.Dataset.compute_cooccurrences(self)
-        self._dataset_cooccurrences = self._cooccurrences
         # fool ankura into calling compute_cooccurrences
         self._cooccurrences = None
 
@@ -443,3 +468,7 @@ class IncrementalSupervisedAnchorDataset(SupervisedAnchorDataset):
             self.orderedclasses = orderclasses(self.classorder)
         self._cooccurrences = None
 
+
+SUPANCH_CTORS = [
+    SupervisedAnchorDataset,
+    IncrementalSupervisedAnchorDataset]

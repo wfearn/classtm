@@ -184,16 +184,14 @@ class FreeClassifier:
         return np.array([self.orderedclasses[pred] for pred in predictions])
 
 
-def build_train_set(dataset, train_doc_ids, knownresp, trainsettype):
-    """Build training set
-
-    Return training set, vocab conversion table, and title ids for training set
+def _get_train_intermediates(dataset, train_doc_ids, knownresp):
+    """Gets intermediate data structures for build_*train_set_builder _inner
+    functions
 
         * dataset :: AbstractClassifiedDataset
         * train_doc_ids :: [int]
         * knownresp :: [?]
             knownresp[i] is label for document train_doc_ids[i]
-        * trainsettype :: Constructor for AbstractClassifiedDataset
     """
     filtered, corpus_to_train_vocab = \
         activetm.tech.anchor.get_filtered_for_train(dataset,
@@ -201,12 +199,84 @@ def build_train_set(dataset, train_doc_ids, knownresp, trainsettype):
     labels = activetm.tech.anchor.get_labels_for_train(dataset,
                                                        train_doc_ids,
                                                        knownresp)
-    trainingset = trainsettype(filtered,
-                               labels,
-                               dataset.classorder)
-    return trainingset, \
-        corpus_to_train_vocab, \
-        list(range(0, len(train_doc_ids)))
+    return filtered, corpus_to_train_vocab, labels
+
+
+class AbstractTrainSetBuilder(object):
+    """Builder for training set
+
+    Originally, I (Nozomu) had written the *TrainSetBuilder code as a few
+    closures.  Unfortunately, Python couldn't pickle the closures (the models,
+    which keep a reference to how to build training sets, get pickled in the
+    experiment code to keep track of data used for plotting), so I
+    reimplemented the closures in object-oriented form.
+    """
+
+    def __init__(self, dataset_ctor):
+        self.dataset_ctor = dataset_ctor
+
+    def build_train_set(self, dataset, train_doc_ids, knownresp):
+        """Builds training set with corresponding corpus to training set
+        vocabulary
+            * train_doc_ids :: [int]
+            * knownresp :: [?]
+                knownresp[i] is label for document train_doc_ids[i]
+            * trainsettype :: SupervisedAnchorDataset constructor
+        """
+        raise NotImplementedError(
+            'Cannot build training set from AbstractTrainSetBuilder')
+
+
+class TrainSetBuilder(AbstractTrainSetBuilder):
+    """Training set builder for SupervisedAnchorDataset"""
+
+    def __init__(self, dataset_ctor):
+        """
+            * dataset_ctor :: SupervisedAnchorDataset contructor
+        """
+        super(TrainSetBuilder, self).__init__(dataset_ctor)
+
+    def build_train_set(self, dataset, train_doc_ids, knownresp):
+        filtered, corpus_to_train_vocab, labels = _get_train_intermediates(
+            dataset,
+            train_doc_ids,
+            knownresp)
+        trainingset = self.dataset_ctor(filtered,
+                                        labels,
+                                        dataset.classorder)
+        return trainingset, corpus_to_train_vocab
+
+
+class ParameterizedTrainSetBuilder(AbstractTrainSetBuilder):
+    """Training set builder for AbstractParameterizedClassifyingDataset"""
+
+    def __init__(self, dataset_ctor, smoothing, label_weight):
+        """
+            * dataset_ctor ::
+                    AbstractParameterizedClassifyingDataset constructor
+            * smoothing :: float
+                smoothing value used in place of zero for class values in
+                unlabeled documents
+            * label_weight :: str
+                formula for calculating value to place in true class label for
+                labeled document; see labeled.get_label_weight_function for
+                more details on the form of the formula
+        """
+        super(ParameterizedTrainSetBuilder, self).__init__(dataset_ctor)
+        self.smoothing = smoothing
+        self.label_weight = label_weight
+
+    def build_train_set(self, dataset, train_doc_ids, knownresp):
+        filtered, corpus_to_train_vocab, labels = _get_train_intermediates(
+            dataset,
+            train_doc_ids,
+            knownresp)
+        trainingset = self.dataset_ctor(filtered,
+                                        labels,
+                                        dataset.classorder,
+                                        self.smoothing,
+                                        self.label_weight)
+        return trainingset, corpus_to_train_vocab
 
 
 def id_cands_maker(classcount, doc_threshold):
@@ -244,7 +314,7 @@ class AbstractClassifyingAnchor:
                  rng,
                  numtopics,
                  expgrad_epsilon,
-                 dataset_ctor,
+                 train_set_builder,
                  classifier):
         """AbstractClassifyingAnchor requires the following parameters:
             * rng :: random.Random
@@ -253,7 +323,9 @@ class AbstractClassifyingAnchor:
                 the number of topics to look for
             * expgrad_epsilon :: float
                 epsilon for exponentiated gradient descent
-            * dataset_ctor :: Contructor for AbstractClassifiedDataset
+            * build_train_set_f :: AbstractTrainSetBuilder
+                an instance of an AbstractTrainSetBuilder that will be used to
+                build the training set
             * classifier :: function(AbstractClassifyingAnchor,
                                      AbstractClassifiedDataset,
                                      [?])
@@ -263,7 +335,7 @@ class AbstractClassifyingAnchor:
         self.rng = rng
         self.numtopics = numtopics
         self.expgrad_epsilon = expgrad_epsilon
-        self.dataset_ctor = dataset_ctor
+        self.train_set_builder = train_set_builder
         self.classifier = classifier
         self.numsamplesperpredictchain = 5
         self.anchors = None
@@ -298,11 +370,10 @@ class AbstractClassifyingAnchor:
                 name of the file containing the anchors this model should use
                 or None if gram-schmidt anchors should be used
         """
-        trainingset, self.corpus_to_train_vocab, _ = \
-            build_train_set(dataset,
-                            train_doc_ids,
-                            knownresp,
-                            self.dataset_ctor)
+        trainingset, self.corpus_to_train_vocab = \
+            self.train_set_builder.build_train_set(dataset,
+                                                   train_doc_ids,
+                                                   knownresp)
         self.vocabsize = trainingset.vocab_size
         self.classorder = trainingset.classorder
         pdim = 1000 \
@@ -334,7 +405,8 @@ class AbstractClassifyingAnchor:
         end = time.time()
         anchorwords_time = datetime.timedelta(seconds=end-start)
         self.lda = lda_helper(self.topics, varname)
-        self.predictor, applytrain_time, train_time = self.classifier(self, trainingset, knownresp)
+        self.predictor, applytrain_time, train_time = \
+            self.classifier(self, trainingset, knownresp)
         return anchorwords_time, applytrain_time, train_time
 
     def predict(self, tokenses):
@@ -401,7 +473,9 @@ def free_classifier(freeclassifyinganchor, trainingset, _):
     applytrain_time = datetime.timedelta(seconds=0)
     train_time = datetime.timedelta(seconds=0)
     return FreeClassifier(class_topic_weights, class_given_word,
-                          freeclassifyinganchor.classorder), applytrain_time, train_time
+                          freeclassifyinganchor.classorder), \
+        applytrain_time, \
+        train_time
 
 
 # pylint:disable-msg=too-many-instance-attributes
@@ -412,12 +486,29 @@ class FreeClassifyingAnchor(AbstractClassifyingAnchor):
     features produced by the model are not used to train a separate classifier)
     """
 
-    def __init__(self, rng, numtopics, expgrad_epsilon):
+    def __init__(self,
+                 rng,
+                 numtopics,
+                 expgrad_epsilon,
+                 smoothing,
+                 label_weight):
+        """
+            * smoothing :: float
+                smoothing value used in place of zero for class values in
+                unlabeled documents
+            * label_weight :: str
+                formula for calculating value to place in true class label for
+                labeled document; see labeled.get_label_weight_function for
+                more details on the form of the formula
+        """
         super(FreeClassifyingAnchor, self).__init__(
             rng,
             numtopics,
             expgrad_epsilon,
-            classtm.labeled.ClassifiedDataset,
+            ParameterizedTrainSetBuilder(
+                classtm.labeled.ClassifiedDataset,
+                smoothing,
+                label_weight),
             free_classifier)
 
     def predict(self, tokenses):
@@ -432,14 +523,6 @@ class FreeClassifyingAnchor(AbstractClassifyingAnchor):
                 doc_words[token, i] += 1
         features = self.predict_topics(docwses)
         return self.predictor.predict(features, doc_words.tocsc())
-
-
-def build_train_adapter(dataset, train_doc_ids, knownresp):
-    """Build train set as SupervisedAnchorDataset"""
-    return build_train_set(dataset,
-                           train_doc_ids,
-                           knownresp,
-                           classtm.labeled.SupervisedAnchorDataset)
 
 
 def sklearn_classifier(anchor, trainingset, knownresp, classifier):
@@ -569,7 +652,7 @@ class LogisticAnchor(AbstractClassifyingAnchor):
             rng,
             numtopics,
             expgrad_epsilon,
-            classtm.labeled.SupervisedAnchorDataset,
+            TrainSetBuilder(classtm.labeled.SupervisedAnchorDataset),
             logistic_regression)
 
 
@@ -584,7 +667,7 @@ class SVMAnchor(AbstractClassifyingAnchor):
             rng,
             numtopics,
             expgrad_epsilon,
-            classtm.labeled.SupervisedAnchorDataset,
+            TrainSetBuilder(classtm.labeled.SupervisedAnchorDataset),
             svm)
 
 
@@ -599,7 +682,7 @@ class RFAnchor(AbstractClassifyingAnchor):
             rng,
             numtopics,
             expgrad_epsilon,
-            classtm.labeled.SupervisedAnchorDataset,
+            TrainSetBuilder(classtm.labeled.SupervisedAnchorDataset),
             random_forest)
 
 
@@ -614,7 +697,7 @@ class NBAnchor(AbstractClassifyingAnchor):
             rng,
             numtopics,
             expgrad_epsilon,
-            classtm.labeled.SupervisedAnchorDataset,
+            TrainSetBuilder(classtm.labeled.SupervisedAnchorDataset),
             naive_bayes)
 
 
@@ -690,7 +773,8 @@ class AbstractIncrementalAnchor(AbstractClassifyingAnchor):
         end = time.time()
         anchorwords_time = datetime.timedelta(seconds=end-start)
         self.lda = lda_helper(self.topics, varname)
-        self.predictor, applytrain_time, train_time = self.classifier(self, trainingset)
+        self.predictor, applytrain_time, train_time = \
+            self.classifier(self, trainingset)
         return anchorwords_time, applytrain_time, train_time
 
 
@@ -797,7 +881,17 @@ def build(rng, settings):
     """Build model according to settings"""
     numtopics = int(settings['numtopics'])
     expgrad_epsilon = float(settings['expgrad_epsilon'])
-    return FACTORY[settings['model']](rng, numtopics, expgrad_epsilon)
+    if settings['model'] == 'free':
+        smoothing = float(settings['smoothing'])
+        label_weight = settings['label_weight']
+        return FACTORY[settings['model']](rng,
+                                          numtopics,
+                                          expgrad_epsilon,
+                                          smoothing,
+                                          label_weight)
+    return FACTORY[settings['model']](rng,
+                                      numtopics,
+                                      expgrad_epsilon)
 
 
 def initialize(rng, dataset, settings):
