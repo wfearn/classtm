@@ -120,7 +120,8 @@ def _run():
                             'train_time': train_time,
                             'devtest_time': devtest_time,
                             'model': model})
-            if len(incrementaldataset.labels) >= len(train_doc_ids):
+            if len(incrementaldataset.labels) >= len(train_doc_ids) or \
+                    len(incrementaldataset.labels) >= endlabeled:
                 break
             for i, trainid in enumerate(train_doc_ids[len(incrementaldataset.labels):]):
                 if i < increment:
