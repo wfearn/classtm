@@ -525,15 +525,6 @@ class FreeClassifyingAnchor(AbstractClassifyingAnchor):
         return self.predictor.predict(features, doc_words.tocsc())
 
 
-<<<<<<< HEAD
-def build_train_adapter(dataset, train_doc_ids, knownresp):
-    """Build train set as SupervisedAnchorDataset"""
-    return build_train_set(dataset,
-                           train_doc_ids,
-                           knownresp,
-                           classtm.labeled.SupervisedAnchorDataset)
-
-
 def word_topic_features(docwses, topics, vocabsize, alpha=0.01):
     """Gets word-topic feature pairs"""
     T = topics.shape[1]
@@ -545,9 +536,6 @@ def word_topic_features(docwses, topics, vocabsize, alpha=0.01):
             features[docnum, int(index)] += 1
     return features
 
-
-=======
->>>>>>> master
 def sklearn_classifier(anchor, trainingset, knownresp, classifier):
     """Builds trained classifier"""
     start = time.time()
