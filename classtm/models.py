@@ -867,6 +867,12 @@ INCFACTORY = {'inclog': [IncrementalLogisticAnchor,
               'quickincfree': [
                   IncrementalFreeClassifyingAnchor,
                   classtm.labeled.QuickIncrementalClassifiedDataset],
+              'nonegsfree': [
+                  IncrementalFreeClassifyingAnchor,
+                  classtm.labeled.ZeroEpsilonDataset],
+              'zeronegsfree': [
+                  IncrementalFreeClassifyingAnchor,
+                  classtm.labeled.ZeroNegativesDataset],
               'incsvm': [IncrementalSVMAnchor,
                          classtm.labeled.IncrementalSupervisedAnchorDataset],
               'incrf': [IncrementalRFAnchor,

@@ -367,6 +367,11 @@ class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
             self._cooccurrences += np.array(miniq / self._docwords.shape[1])
             # reset new labels
             self.newlabels = {}
+        if np.any(self._cooccurrences < 0):
+            print('Negative in Q')
+            print(np.transpose(np.nonzero(self._cooccurrences < 0)))
+            print(self._cooccurrences[self._cooccurrences < 0])
+            print('Original vocab size:', self.origvocabsize)
         self._cooccurrences[
             (-epsilon < self._cooccurrences) & (self._cooccurrences < 0)] = 0
 
@@ -404,6 +409,137 @@ class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
         self._cooccurrences = None
 
 
+class ZeroNegativesDataset(QuickIncrementalClassifiedDataset):
+    """Zero out negative values in Q"""
+
+    def __init__(self, dataset, settings):
+        super(ZeroNegativesDataset, self).__init__(dataset,
+                                                   settings)
+
+    def compute_cooccurrences(self, epsilon=1e-15):
+        super(ZeroNegativesDataset, self).compute_cooccurrences(epsilon)
+        self._cooccurrences[self._cooccurrences < 0] = 0
+
+
+class ZeroEpsilonDataset(QuickIncrementalClassifiedDataset):
+    """Quick check to see if zeroing idea works"""
+
+    def __init__(self, dataset, settings):
+        super(ZeroEpsilonDataset, self).__init__(dataset,
+                                                 settings)
+
+    # pylint:disable-msg=invalid-name
+    def _build_miniq(self, docnums):
+        """Builds Q with just the documents in docnums
+
+            * docnums :: np.array
+                column indices into self._docwords for the documents that have
+                been labeled for this update
+        """
+        data = []
+        indices = []
+        indptr = [0]
+        H_hat = np.zeros(self.vocab_size)
+        for docnum in docnums:
+            col_start = self._docwords.indptr[docnum]
+            col_end = self._docwords.indptr[docnum+1]
+            row_indices = self._docwords.indices[col_start:col_end]
+            count = np.sum(self._docwords.data[col_start:col_end])
+            norm = count * (count - 1)
+            if norm != 0:
+                sqrtnorm = np.sqrt(norm)
+                labels_start = col_end - len(self.classorder)
+                if np.all(
+                        self._docwords.data[labels_start:col_end] ==
+                        self.smoothing):
+                    H_hat[row_indices[:-len(self.classorder)]] += \
+                        self._docwords.data[col_start:labels_start] / norm
+                    H_hat[row_indices[-len(self.classorder):]] += \
+                        np.square(self._docwords.data[labels_start:col_end]) \
+                        / norm
+                else:
+                    H_hat[row_indices] += \
+                        self._docwords.data[col_start: col_end] / norm
+                data.extend(self._docwords.data[col_start:col_end] / sqrtnorm)
+                indices.extend(row_indices)
+                indptr.append(len(data))
+        H_tilde = scipy.sparse.csc_matrix(
+            (data, indices, indptr),
+            shape=(self.vocab_size, len(indptr)-1),
+            dtype=np.float)
+        return H_tilde * H_tilde.transpose() - np.diag(H_hat)
+
+    def init_compute_cooccurrences(self):
+        """Initialize Q"""
+        vocab_size, num_docs = self.M.shape
+        H_tilde = scipy.sparse.csc_matrix(self.M.copy(), dtype=float)
+        H_hat = np.zeros(vocab_size)
+
+        # Construct H_tilde and H_hat
+        for j in range(H_tilde.indptr.size - 1):
+            # get indices of column j
+            col_start = H_tilde.indptr[j]
+            col_end = H_tilde.indptr[j + 1]
+            row_indices = H_tilde.indices[col_start: col_end]
+
+            # get count of tokens in column (document) and compute norm
+            count = np.sum(H_tilde.data[col_start: col_end])
+            norm = count * (count - 1)
+
+            # update H_hat and H_tilde (see supplementary)
+            if norm != 0:
+                labels_start = col_end - len(self.classorder)
+                if len(self.classorder) and np.all(
+                        H_tilde.data[labels_start:col_end] == self.smoothing):
+                    H_hat[row_indices[:-len(self.classorder)]] += \
+                        H_tilde.data[col_start:labels_start] / norm
+                    H_hat[row_indices[-len(self.classorder):]] += \
+                        np.square(H_tilde.data[labels_start:col_end]) / norm
+                else:
+                    H_hat[row_indices] += \
+                        H_tilde.data[col_start: col_end] / norm
+                H_tilde.data[col_start: col_end] /= np.sqrt(norm)
+
+        # construct and store normalized Q
+        Q = H_tilde * H_tilde.transpose() - np.diag(H_hat)
+        self._cooccurrences = np.array(Q / num_docs)
+
+    def compute_cooccurrences(self, epsilon=1e-15):
+        """Updates Q"""
+        if self.prevq is None:
+            self.init_compute_cooccurrences()
+            self.prevq = self._cooccurrences
+        else:
+            # reload previous Q
+            self._cooccurrences = self.prevq
+        if self.newlabels:
+            # compute what needs to be taken out of Q
+            docnums = []
+            for title in self.newlabels:
+                docnums.append(self.titlesorder[title])
+            docnums = np.array(docnums)
+            miniq = self._build_miniq(docnums)
+            # take it out of Q
+            self._cooccurrences -= np.array(miniq / self._docwords.shape[1])
+            # compute what needs to be put into Q
+            tmp = self._docwords.tolil()
+            for title, label in self.newlabels.items():
+                self._label_helper(tmp, title, label)
+            self._docwords = tmp.tocsc()
+            miniq = self._build_miniq(docnums)
+            # put it into Q
+            self._cooccurrences += np.array(miniq / self._docwords.shape[1])
+            # reset new labels
+            self.newlabels = {}
+        if np.any(self._cooccurrences < 0):
+            print('Negative in Q')
+            print(np.transpose(np.nonzero(self._cooccurrences < 0)))
+            print(self._cooccurrences[self._cooccurrences < 0])
+            print('Original vocab size:', self.origvocabsize)
+        self._cooccurrences[
+            (-epsilon < self._cooccurrences) & (self._cooccurrences < 0)] = 0
+
+
 class SupervisedAnchorDataset(AbstractClassifiedDataset):
     """Dataset implementing Nguyen et al. (NAACL 2015)"""
 
@@ -413,7 +549,7 @@ class SupervisedAnchorDataset(AbstractClassifiedDataset):
                                                       classorder)
         # precompute \bar{Q}
         ankura.pipeline.Dataset.compute_cooccurrences(self)
-        # numpy doesn't broadcast across rows, so we make the rows into columns
+        # np doesn't broadcast across rows, so we make the rows into columns
         # to perform the proper normalization before turning the columns back
         # into rows
         self._dataset_cooccurrences = \
