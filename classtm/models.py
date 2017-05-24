@@ -56,7 +56,7 @@ class VariationalHelper:
         topicscopy = topics.T.copy()
         # lda-c stores topics in log space
         topicscopy += 0.1e-100
-        # pylint:disable-msg=no-member
+        # pylint:disable=no-member
         topicscopy = np.log(topicscopy)
         np.savetxt(varname+'.beta', topicscopy, fmt='%5.10f')
         with open(varname+'.other', 'w') as ofh:
@@ -873,6 +873,9 @@ INCFACTORY = {'inclog': [IncrementalLogisticAnchor,
               'zeronegsfree': [
                   IncrementalFreeClassifyingAnchor,
                   classtm.labeled.ZeroNegativesDataset],
+              'projfree': [
+                  IncrementalFreeClassifyingAnchor,
+                  classtm.labeled.ProjectedDataset],
               'incsvm': [IncrementalSVMAnchor,
                          classtm.labeled.IncrementalSupervisedAnchorDataset],
               'incrf': [IncrementalRFAnchor,

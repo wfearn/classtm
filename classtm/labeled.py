@@ -409,6 +409,95 @@ class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
         self._cooccurrences = None
 
 
+class ProjectedDataset(QuickIncrementalClassifiedDataset):
+    """Project Q matrix to simplex"""
+
+    def __init__(self, dataset, settings):
+        super(ProjectedDataset, self).__init__(dataset,
+                                               settings)
+
+    @property
+    def Q(self):
+        result = super(ProjectedDataset, self).Q
+        result = self._project(result)
+        if np.any(result < 0):
+            print('Negative in Q')
+            print(np.transpose(np.nonzero(self._cooccurrences < 0)))
+            print(self._cooccurrences[self._cooccurrences < 0])
+        return result
+
+    def compute_cooccurrences(self, epsilon=1e-15):
+        """Updates Q"""
+        if self.prevq is None:
+            ankura.pipeline.Dataset.compute_cooccurrences(self, epsilon)
+            self.prevq = self._cooccurrences
+        else:
+            # reload previous Q
+            self._cooccurrences = self.prevq
+        if self.newlabels:
+            # compute what needs to be taken out of Q
+            docnums = []
+            for title in self.newlabels:
+                docnums.append(self.titlesorder[title])
+            docnums = np.array(docnums)
+            miniq = self._build_miniq(docnums)
+            # take it out of Q
+            self._cooccurrences -= np.array(miniq / self._docwords.shape[1])
+            # compute what needs to be put into Q
+            tmp = self._docwords.tolil()
+            for title, label in self.newlabels.items():
+                self._label_helper(tmp, title, label)
+            self._docwords = tmp.tocsc()
+            miniq = self._build_miniq(docnums)
+            # put it into Q
+            self._cooccurrences += np.array(miniq / self._docwords.shape[1])
+            # reset new labels
+            self.newlabels = {}
+
+    def _project(self, vector):
+        """Projects vector onto simplex
+
+        Uses algorithm proposed by Condat in "Fast Projection onto the Simplex
+        and the l_1 Ball" (Mathematical Programming, July 2016, vol. 158, iss.
+        1)
+        """
+        dim_max = 1.0
+        flattened = vector.ravel()
+        greaters = [flattened[0]]
+        potentials = []
+        rho = flattened[0] - dim_max
+        for value in flattened[1:]:
+            if value > rho:
+                rho += (value - rho) / (len(greaters) + 1)
+                if rho > (value - dim_max):
+                    greaters.append(value)
+                else:
+                    potentials.extend(greaters)
+                    greaters = [value]
+                    rho = value - dim_max
+        if potentials:
+            for value in potentials:
+                if value > rho:
+                    greaters.append(value)
+                    rho += (value - rho) / len(greaters)
+        while True:
+            prev_length = len(greaters)
+            next_greaters = []
+            for i, value in enumerate(greaters):
+                if value <= rho:
+                    next_greaters.append(value)
+                    rho += \
+                        (rho - value) / (prev_length - i + len(next_greaters))
+            greaters = next_greaters
+            if prev_length == len(greaters):
+                break
+        vector -= rho
+        print(rho)
+        print(np.transpose(np.nonzero(vector < 0)))
+        vector[vector < 0] = 0
+        return vector
+
+
 class ZeroNegativesDataset(QuickIncrementalClassifiedDataset):
     """Zero out negative values in Q"""
 
