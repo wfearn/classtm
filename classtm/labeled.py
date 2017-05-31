@@ -371,7 +371,7 @@ class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
             print('Negative in Q')
             print(np.transpose(np.nonzero(self._cooccurrences < 0)))
             print(self._cooccurrences[self._cooccurrences < 0])
-            print('Original vocab size:', self.origvocabsize)
+            print('Original vocab size:', self.origvocabsize, flush=True)
         self._cooccurrences[
             (-epsilon < self._cooccurrences) & (self._cooccurrences < 0)] = 0
 
@@ -423,7 +423,7 @@ class ProjectedDataset(QuickIncrementalClassifiedDataset):
         if np.any(result < 0):
             print('Negative in Q')
             print(np.transpose(np.nonzero(self._cooccurrences < 0)))
-            print(self._cooccurrences[self._cooccurrences < 0])
+            print(self._cooccurrences[self._cooccurrences < 0], flush=True)
         return result
 
     def compute_cooccurrences(self, epsilon=1e-15):
@@ -492,8 +492,6 @@ class ProjectedDataset(QuickIncrementalClassifiedDataset):
             if prev_length == len(greaters):
                 break
         vector -= rho
-        print(rho)
-        print(np.transpose(np.nonzero(vector < 0)))
         vector[vector < 0] = 0
         return vector
 
@@ -624,7 +622,7 @@ class ZeroEpsilonDataset(QuickIncrementalClassifiedDataset):
             print('Negative in Q')
             print(np.transpose(np.nonzero(self._cooccurrences < 0)))
             print(self._cooccurrences[self._cooccurrences < 0])
-            print('Original vocab size:', self.origvocabsize)
+            print('Original vocab size:', self.origvocabsize, flush=True)
         self._cooccurrences[
             (-epsilon < self._cooccurrences) & (self._cooccurrences < 0)] = 0
 
