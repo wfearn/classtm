@@ -19,7 +19,7 @@
  #
  #                    If you use this code or parts of it for any purpose,
  #                    the author asks you to cite the paper above or, in
- #                    that event, its published version. Please email him if
+ #                    that event, its published version. Please email Condat if
  #                    the proposed algorithms were useful for one of your
  #                    projects, or for any comment or suggestion.
  #
