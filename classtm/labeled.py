@@ -1,10 +1,26 @@
 """ClassifiedDataset for labeled datasets (classification)"""
+import ctypes
 import os
 
 import numpy as np
+import numpy.ctypeslib as npct
 import scipy.sparse
 
 import ankura.pipeline
+
+
+ARRAY_1D_DOUBLE = npct.ndpointer(dtype=np.double, ndim=1, flags='CONTIGUOUS')
+SO_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    'simplex',
+    'simplexproj.so')
+LIBCD = ctypes.CDLL(SO_PATH)
+LIBCD.simplexproj.restype = None
+LIBCD.simplexproj.argtypes = [
+    ARRAY_1D_DOUBLE,
+    ARRAY_1D_DOUBLE,
+    ctypes.c_int,
+    ctypes.c_double]
 
 
 def get_labels(filename):
@@ -418,12 +434,12 @@ class ProjectedDataset(QuickIncrementalClassifiedDataset):
 
     @property
     def Q(self):
-        result = super(ProjectedDataset, self).Q
+        result = super(ProjectedDataset, self).Q.copy()
         result = self._project(result)
         if np.any(result < 0):
             print('Negative in Q')
-            print(np.transpose(np.nonzero(self._cooccurrences < 0)))
-            print(self._cooccurrences[self._cooccurrences < 0], flush=True)
+            print(np.transpose(np.nonzero(result < 0)))
+            print(result[result < 0], flush=True)
         return result
 
     def compute_cooccurrences(self, epsilon=1e-15):
@@ -461,39 +477,9 @@ class ProjectedDataset(QuickIncrementalClassifiedDataset):
         and the l_1 Ball" (Mathematical Programming, July 2016, vol. 158, iss.
         1)
         """
-        dim_max = 1.0
         flattened = vector.ravel()
-        greaters = [flattened[0]]
-        potentials = []
-        rho = flattened[0] - dim_max
-        for value in flattened[1:]:
-            if value > rho:
-                rho += (value - rho) / (len(greaters) + 1)
-                if rho > (value - dim_max):
-                    greaters.append(value)
-                else:
-                    potentials.extend(greaters)
-                    greaters = [value]
-                    rho = value - dim_max
-        if potentials:
-            for value in potentials:
-                if value > rho:
-                    greaters.append(value)
-                    rho += (value - rho) / len(greaters)
-        while True:
-            prev_length = len(greaters)
-            next_greaters = []
-            for i, value in enumerate(greaters):
-                if value <= rho:
-                    next_greaters.append(value)
-                    rho += \
-                        (rho - value) / (prev_length - i + len(next_greaters))
-            greaters = next_greaters
-            if prev_length == len(greaters):
-                break
-        vector -= rho
-        vector[vector < 0] = 0
-        return vector
+        LIBCD.simplexproj(flattened, flattened, flattened.size, 1.0)
+        return flattened.reshape(vector.shape)
 
 
 class ZeroNegativesDataset(QuickIncrementalClassifiedDataset):

@@ -39,14 +39,19 @@ class TSVM:
 
     def _write_feats(self, ofh, feats):
         """Writes the features into the data file"""
-        for i, feat in enumerate(feats):
-            ofh.write(str(i+1))
+        # expecting feats to be a csr row
+        for col, datum in zip(feats.indices[feats.indptr[0]:feats.indptr[1]],
+                              feats.data[feats.indptr[0]:feats.indptr[1]]):
+            ofh.write(str(col+1))
             ofh.write(':')
-            ofh.write(str(feat))
+            ofh.write(str(datum))
             ofh.write(' ')
 
     def fit(self, features, labels):
-        """Call SVMLight for transductive SVM training"""
+        """Call SVMLight for transductive SVM training
+
+        features must be a csr matrix
+        """
         for label_type in self.classorder:
             train_file = self._train_name(label_type)
             with open(train_file, 'w') as ofh:

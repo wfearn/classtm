@@ -414,7 +414,10 @@ class AbstractClassifyingAnchor:
         docwses = []
         for tokens in tokenses:
             docwses.append(self._convert_vocab_space(tokens))
-        features = self.predict_topics(docwses)
+        features = scipy.sparse.hstack(
+            [
+                self.predict_topics(docwses),
+                self.encode(docwses)]).tocsr()
         return self.predictor.predict(features)
 
     def _convert_vocab_space(self, tokens):
@@ -424,6 +427,17 @@ class AbstractClassifyingAnchor:
             conversion = self.corpus_to_train_vocab[token]
             if conversion >= 0:
                 result.append(conversion)
+        return result
+
+    def encode(self, docwses):
+        """Produces sparse matrix of token counts
+
+        Rows correspond to documents and columns correspond to tokens
+        """
+        result = scipy.sparse.lil_matrix((len(docwses), self.vocabsize))
+        for i, docws in enumerate(docwses):
+            for token in sorted(docws):
+                result[i, token] += 1
         return result
 
     def cleanup(self):
@@ -531,7 +545,10 @@ def sklearn_classifier(anchor, trainingset, knownresp, classifier):
     docwses = []
     for i in range(len(trainingset.titles)):
         docwses.append(trainingset.doc_tokens(i))
-    features = anchor.predict_topics(docwses)
+    features = scipy.sparse.hstack(
+        [
+            anchor.predict_topics(docwses),
+            anchor.encode(docwses)]).tocsr()
     end = time.time()
     applytrain_time = datetime.timedelta(seconds=end-start)
     start = time.time()
@@ -576,7 +593,10 @@ def incremental_sklearn(anchor, trainingset, classifier):
     for title, label in trainingset.labels.items():
         docwses.append(trainingset.doc_tokens(trainingset.titlesorder[title]))
         knownresp.append(label)
-    features = anchor.predict_topics(docwses)
+    features = scipy.sparse.hstack(
+        [
+            anchor.predict_topics(docwses),
+            anchor.encode(docwses)]).tocsr()
     end = time.time()
     applytrain_time = datetime.timedelta(seconds=end-start)
     start = time.time()
@@ -628,7 +648,10 @@ def incremental_tsvm(tsvmanchor, trainingset):
         knownresp.append(
             trainingset.labels[title]
             if title in trainingset.labels else 'unknown')
-    features = tsvmanchor.predict_topics(docwses)
+    features = scipy.sparse.hstack(
+        [
+            tsvmanchor.predict_topics(docwses),
+            tsvmanchor.encode(docwses)]).tocsr()
     end = time.time()
     applytrain_time = datetime.timedelta(seconds=end-start)
     start = time.time()
