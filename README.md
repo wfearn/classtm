@@ -19,6 +19,8 @@ in the `ClassTM` directory.
 
 You will also need to compile the code in `classtm/ldac`.
 
+You will also need to compile the code in `classtm/simplex`.
+
 Finally, you will need to download SVMLight from
 http://download.joachims.org/svm_light/current/svm_light.tar.gz, extract the
 contents of the tarball in the `classtm/svm_light` directory, and compile the
