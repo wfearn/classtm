@@ -1,1 +1,1 @@
-thing
+delete the thing
