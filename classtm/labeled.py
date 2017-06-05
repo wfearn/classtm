@@ -296,26 +296,6 @@ class IncrementalClassifiedDataset(AbstractParameterizedClassifiedDataset):
         self._cooccurrences = None
 
 
-def get_doc_co_counts(sparsevec):
-    """Returns document cooccurrence counts as dense matrix
-
-        * sparsevec :: vocab x 1 scipy.sparse.csc_matrix
-    """
-    first_term = sparsevec * sparsevec.T
-    # first_term - Diag(sparsevec)
-    # since sparsevec is a column vector, we know that all of its data are in
-    # the one column
-    for row, value in zip(sparsevec.indices, sparsevec.data):
-        for i, ft_row in enumerate(
-                first_term.indices[
-                    first_term.indptr[row]:first_term.indptr[row+1]]):
-            if ft_row == row:
-                first_term.data[first_term.indptr[row]+i] -= value
-                break
-            continue
-    return first_term.todense()
-
-
 class QuickIncrementalClassifiedDataset(IncrementalClassifiedDataset):
     """ClassifiedDataset for incremental labeling using quick Q building"""
 
