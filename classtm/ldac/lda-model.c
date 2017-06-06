@@ -69,12 +69,12 @@ lda_suffstats* new_lda_suffstats(lda_model* model)
     ss->class_word = malloc(sizeof(double*)*num_topics);
     for (i = 0; i < num_topics; i++)
     {
-	ss->class_total[i] = 0;
-	ss->class_word[i] = malloc(sizeof(double)*num_terms);
-	for (j = 0; j < num_terms; j++)
-	{
-	    ss->class_word[i][j] = 0;
-	}
+        ss->class_total[i] = 0;
+        ss->class_word[i] = malloc(sizeof(double)*num_terms);
+        for (j = 0; j < num_terms; j++)
+        {
+            ss->class_word[i][j] = 0;
+        }
     }
     return(ss);
 }
@@ -160,9 +160,9 @@ lda_model* new_lda_model(int num_terms, int num_topics)
     model->log_prob_w = malloc(sizeof(double*)*num_topics);
     for (i = 0; i < num_topics; i++)
     {
-	model->log_prob_w[i] = malloc(sizeof(double)*num_terms);
-	for (j = 0; j < num_terms; j++)
-	    model->log_prob_w[i][j] = 0;
+        model->log_prob_w[i] = malloc(sizeof(double)*num_terms);
+        for (j = 0; j < num_terms; j++)
+            model->log_prob_w[i][j] = 0;
     }
     return(model);
 }
@@ -179,7 +179,7 @@ void free_lda_model(lda_model* model)
 
     for (i = 0; i < model->num_topics; i++)
     {
-	free(model->log_prob_w[i]);
+        free(model->log_prob_w[i]);
     }
     free(model->log_prob_w);
 }
@@ -200,11 +200,11 @@ void save_lda_model(lda_model* model, char* model_root)
     fileptr = fopen(filename, "w");
     for (i = 0; i < model->num_topics; i++)
     {
-	for (j = 0; j < model->num_terms; j++)
-	{
-	    fprintf(fileptr, " %5.10f", model->log_prob_w[i][j]);
-	}
-	fprintf(fileptr, "\n");
+        for (j = 0; j < model->num_terms; j++)
+        {
+            fprintf(fileptr, " %5.10f", model->log_prob_w[i][j]);
+        }
+        fprintf(fileptr, "\n");
     }
     fclose(fileptr);
 

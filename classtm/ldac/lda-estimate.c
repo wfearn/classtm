@@ -92,12 +92,12 @@ void save_gamma(char* filename, double** gamma, int num_docs, int num_topics)
 
     for (d = 0; d < num_docs; d++)
     {
-	fprintf(fileptr, "%5.10f", gamma[d][0]);
-	for (k = 1; k < num_topics; k++)
-	{
-	    fprintf(fileptr, " %5.10f", gamma[d][k]);
-	}
-	fprintf(fileptr, "\n");
+        fprintf(fileptr, "%5.10f", gamma[d][0]);
+        for (k = 1; k < num_topics; k++)
+        {
+            fprintf(fileptr, " %5.10f", gamma[d][k]);
+        }
+        fprintf(fileptr, "\n");
     }
     fclose(fileptr);
 }
@@ -119,12 +119,12 @@ void run_em(char* start, char* directory, corpus* corpus)
 
     var_gamma = malloc(sizeof(double*)*(corpus->num_docs));
     for (d = 0; d < corpus->num_docs; d++)
-	var_gamma[d] = malloc(sizeof(double) * NTOPICS);
+        var_gamma[d] = malloc(sizeof(double) * NTOPICS);
 
     int max_length = max_corpus_length(corpus);
     phi = malloc(sizeof(double*)*max_length);
     for (n = 0; n < max_length; n++)
-	phi[n] = malloc(sizeof(double) * NTOPICS);
+        phi[n] = malloc(sizeof(double) * NTOPICS);
 
     // initialize model
 
@@ -243,11 +243,11 @@ void read_settings(char* filename)
     fscanf(fileptr, "alpha %s", alpha_action);
     if (strcmp(alpha_action, "fixed")==0)
     {
-	ESTIMATE_ALPHA = 0;
+        ESTIMATE_ALPHA = 0;
     }
     else
     {
-	ESTIMATE_ALPHA = 1;
+        ESTIMATE_ALPHA = 1;
     }
     fclose(fileptr);
 }
@@ -270,24 +270,30 @@ void infer(char* model_root, char* save, corpus* corpus)
     model = load_lda_model(model_root);
     var_gamma = malloc(sizeof(double*)*(corpus->num_docs));
     for (i = 0; i < corpus->num_docs; i++)
-	var_gamma[i] = malloc(sizeof(double)*model->num_topics);
+        var_gamma[i] = malloc(sizeof(double)*model->num_topics);
     sprintf(filename, "%s-lda-lhood.dat", save);
     fileptr = fopen(filename, "w");
     for (d = 0; d < corpus->num_docs; d++)
     {
-	if (((d % 100) == 0) && (d>0)) printf("document %d\n",d);
+        if (((d % 100) == 0) && (d>0)) printf("document %d\n",d);
 
-	doc = &(corpus->docs[d]);
-	phi = (double**) malloc(sizeof(double*) * doc->length);
-	for (n = 0; n < doc->length; n++)
-	    phi[n] = (double*) malloc(sizeof(double) * model->num_topics);
-	likelihood = lda_inference(doc, model, var_gamma[d], phi);
+        doc = &(corpus->docs[d]);
+        phi = (double**) malloc(sizeof(double*) * doc->length);
+        for (n = 0; n < doc->length; n++)
+            phi[n] = (double*) malloc(sizeof(double) * model->num_topics);
+        likelihood = lda_inference(doc, model, var_gamma[d], phi);
+        for (n = 0; n < doc->length; n++)
+            free(phi[n]);
+        free(phi);
 
-	fprintf(fileptr, "%5.5f\n", likelihood);
+        fprintf(fileptr, "%5.5f\n", likelihood);
     }
     fclose(fileptr);
     sprintf(filename, "%s-gamma.dat", save);
     save_gamma(filename, var_gamma, corpus->num_docs, model->num_topics);
+    for (i = 0; i < corpus->num_docs; i++)
+        free(var_gamma[i]);
+    free(var_gamma);
 }
 
 
