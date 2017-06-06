@@ -19,7 +19,7 @@
 
 .SUFFIXES: .c .u
 CC= gcc
-CFLAGS= -O3 -Wall -g
+CFLAGS= -O3 -Wall -g -finline-functions -ffast-math
 LDFLAGS= -lm
 
 LOBJECTS= lda-data.o lda-estimate.o lda-model.o lda-inference.o utils.o cokus.o lda-alpha.o
