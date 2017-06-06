@@ -263,6 +263,31 @@ class IncrementalClassifiedDataset(AbstractParameterizedClassifiedDataset):
             self.label_weight(docwords[:self.origvocabsize, docnum].sum(),
                               docwords.shape[1])
 
+    def initial_label(self, titles, labels):
+        """Account for initially labeled documents
+
+            * titles :: [str]
+                titles of documents to be labeled
+            * labels :: [str]
+                labels of documents
+        Assumes that titles are in corpus and that there are no labeled
+        documents currently in the corpus.
+        """
+        for title, label in zip(titles, labels):
+            self.labels[title] = label
+            if label not in self.classorder:
+                self.classorder[label] = len(self.classorder)
+                self._vocab = np.append(self._vocab, label)
+        self.orderedclasses = orderclasses(self.classorder)
+        tmp = scipy.sparse.lil_matrix((len(self._vocab), len(self.titles)),
+                                      dtype=np.float)
+        tmp[:self.origvocabsize, :] = self._docwords[:self.origvocabsize, :]
+        tmp[self.origvocabsize:, :] = self.smoothing
+        for curtitle, curlabel in self.labels.items():
+            self._label_helper(tmp, curtitle, curlabel)
+        self._docwords = tmp.tocsc()
+        self.compute_cooccurrences()
+
     def label_document(self, title, label):
         """Label a document in this corpus
 

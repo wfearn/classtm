@@ -91,11 +91,11 @@ def _run():
         startlabeled = int(settings['startlabeled'])
         endlabeled = int(settings['endlabeled'])
         increment = int(settings['increment'])
-        for i, trainid in enumerate(train_doc_ids):
-            if i < startlabeled:
-                title = dataset.titles[trainid]
-                incrementaldataset.label_document(title,
-                                                  dataset.labels[title])
+        initial_train = [dataset.titles[trainid]
+                         for trainid in train_doc_ids[:startlabeled]]
+        incrementaldataset.initial_label(
+            initial_train,
+            [dataset.labels[title] for title in initial_train])
         results = []
         labeled_count = startlabeled
         # this thread will kill the program after 60 minutes
@@ -107,7 +107,6 @@ def _run():
                                                                         outprefix,
                                                                         lda_helper,
                                                                         anchors_file)
-            # print('Trained model')
             confusion_matrix, devtest_time = evaluate.confusion_matrix(model,
                                                                        test_words,
                                                                        test_labels,
