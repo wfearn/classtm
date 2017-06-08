@@ -673,6 +673,23 @@ class IncrementalSupervisedAnchorDataset(SupervisedAnchorDataset):
                                                                  {})
         self.titlesorder = get_titles_order(self.titles)
 
+    def initial_label(self, titles, labels):
+        """Account for initially labeled documents
+
+            * titles :: [str]
+                titles of documents to be labeled
+            * labels :: [str]
+                labels of documents
+        Assumes that titles are in corpus and that there are no labeled
+        documents currently in the corpus.
+        """
+        for title, label in zip(titles, labels):
+            self.labels[title] = label
+            if label not in self.classorder:
+                self.classorder[label] = len(self.classorder)
+        self.orderedclasses = orderclasses(self.classorder)
+        self._cooccurrences = None
+
     def label_document(self, title, label):
         """Label a document in this corpus
 
