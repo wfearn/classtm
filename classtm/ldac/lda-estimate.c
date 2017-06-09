@@ -18,6 +18,7 @@
 // USA
 
 #include "lda-estimate.h"
+#include "fastonebigheader.h"
 
 /*
  * perform inference on a document and update sufficient statistics
@@ -40,9 +41,9 @@ double doc_e_step(document* doc, double* gamma, double** phi,
     for (k = 0; k < model->num_topics; k++)
     {
         gamma_sum += gamma[k];
-        ss->alpha_suffstats += digamma(gamma[k]);
+        ss->alpha_suffstats += fasterdigamma(gamma[k]);
     }
-    ss->alpha_suffstats -= model->num_topics * digamma(gamma_sum);
+    ss->alpha_suffstats -= model->num_topics * fasterdigamma(gamma_sum);
 
     for (n = 0; n < doc->length; n++)
     {

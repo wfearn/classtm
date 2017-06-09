@@ -18,6 +18,7 @@
 // USA
 
 #include "lda-inference.h"
+#include "fastonebigheader.h"
 
 /*
  * variational inference
@@ -65,12 +66,12 @@ double lda_inference(document* doc, lda_model* model, double* var_gamma, double*
 
             for (k = 0; k < model->num_topics; k++)
             {
-                phi[n][k] = exp(phi[n][k] - phisum);
+                phi[n][k] = fasterexp(phi[n][k] - phisum);
                 var_gamma[k] =
                     var_gamma[k] + doc->counts[n]*(phi[n][k] - oldphi[k]);
                 // !!! a lot of extra digamma's here because of how we're computing it
                 // !!! but its more automatically updated too.
-                digamma_gam[k] = digamma(var_gamma[k]);
+                digamma_gam[k] = fasterdigamma(var_gamma[k]);
             }
         }
 
@@ -98,21 +99,21 @@ compute_likelihood(document* doc, lda_model* model, double** phi, double* var_ga
 
     for (k = 0; k < model->num_topics; k++)
     {
-        dig[k] = digamma(var_gamma[k]);
+        dig[k] = fasterdigamma(var_gamma[k]);
         var_gamma_sum += var_gamma[k];
     }
-    digsum = digamma(var_gamma_sum);
+    digsum = fasterdigamma(var_gamma_sum);
 
     likelihood =
-        lgamma(model->alpha * model -> num_topics)
-        - model -> num_topics * lgamma(model->alpha)
-        - (lgamma(var_gamma_sum));
+        fasterlgamma(model->alpha * model -> num_topics)
+        - model -> num_topics * fasterlgamma(model->alpha)
+        - (fasterlgamma(var_gamma_sum));
 
     for (k = 0; k < model->num_topics; k++)
     {
         likelihood +=
             (model->alpha - 1)*(dig[k] - digsum)
-            + lgamma(var_gamma[k])
+            + fasterlgamma(var_gamma[k])
             - (var_gamma[k] - 1)*(dig[k] - digsum);
 
         for (n = 0; n < doc->length; n++)

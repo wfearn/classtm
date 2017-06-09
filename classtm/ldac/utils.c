@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "fastonebigheader.h"
 
 /*
  * given log(a) and log(b), return log(a + b)
@@ -11,11 +12,11 @@ double log_sum(double log_a, double log_b)
 
   if (log_a < log_b)
   {
-      v = log_b+log(1 + exp(log_a-log_b));
+      v = log_b+log(1 + fasterexp(log_a-log_b));
   }
   else
   {
-      v = log_a+log(1 + exp(log_b-log_a));
+      v = log_a+log(1 + fasterexp(log_b-log_a));
   }
   return(v);
 }
