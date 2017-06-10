@@ -273,11 +273,13 @@ class IncrementalClassifiedDataset(AbstractParameterizedClassifiedDataset):
         Assumes that titles are in corpus and that there are no labeled
         documents currently in the corpus.
         """
+        newlabels = []
         for title, label in zip(titles, labels):
             self.labels[title] = label
             if label not in self.classorder:
+                newlabels.append(label)
                 self.classorder[label] = len(self.classorder)
-                self._vocab = np.append(self._vocab, label)
+        self._vocab = np.append(self._vocab, newlabels)
         self.orderedclasses = orderclasses(self.classorder)
         tmp = scipy.sparse.lil_matrix((len(self._vocab), len(self.titles)),
                                       dtype=np.float)
