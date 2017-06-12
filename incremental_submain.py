@@ -91,11 +91,13 @@ def _run():
         startlabeled = int(settings['startlabeled'])
         endlabeled = int(settings['endlabeled'])
         increment = int(settings['increment'])
+        start = time.time()
         initial_train = [dataset.titles[trainid]
                          for trainid in train_doc_ids[:startlabeled]]
         incrementaldataset.initial_label(
             initial_train,
             [dataset.labels[title] for title in initial_train])
+        label_time = datetime.timedelta(seconds=time.time()-start)
         results = []
         labeled_count = startlabeled
         # this thread will kill the program after 60 minutes
@@ -118,16 +120,19 @@ def _run():
                             'applytrain_time': applytrain_time,
                             'train_time': train_time,
                             'devtest_time': devtest_time,
+                            'label_time': label_time,
                             'model': model})
             if len(incrementaldataset.labels) >= len(train_doc_ids) or \
                     len(incrementaldataset.labels) >= endlabeled:
                 break
+            start = time.time()
             for i, trainid in enumerate(train_doc_ids[len(incrementaldataset.labels):]):
                 if i < increment:
                     labeled_count += 1
                     title = dataset.titles[trainid]
                     incrementaldataset.label_document(title,
                                                       dataset.labels[title])
+            label_time = datetime.timedelta(seconds=time.time()-start)
         model.cleanup()
 
         with open(outprefix+'.results', 'wb') as ofh:
