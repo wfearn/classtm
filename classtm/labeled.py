@@ -271,7 +271,8 @@ class IncrementalClassifiedDataset(AbstractParameterizedClassifiedDataset):
             * labels :: [str]
                 labels of documents
         Assumes that titles are in corpus and that there are no labeled
-        documents currently in the corpus.
+        documents currently in the corpus.  Also assumes that self._docwords is
+        a scipy.sparse.csc_matrix.
         """
         newlabels = []
         for title, label in zip(titles, labels):
@@ -281,13 +282,32 @@ class IncrementalClassifiedDataset(AbstractParameterizedClassifiedDataset):
                 self.classorder[label] = len(self.classorder)
         self._vocab = np.append(self._vocab, newlabels)
         self.orderedclasses = orderclasses(self.classorder)
-        tmp = scipy.sparse.lil_matrix((len(self._vocab), len(self.titles)),
-                                      dtype=np.float)
-        tmp[:self.origvocabsize, :] = self._docwords[:self.origvocabsize, :]
-        tmp[self.origvocabsize:, :] = self.smoothing
-        for curtitle, curlabel in self.labels.items():
-            self._label_helper(tmp, curtitle, curlabel)
-        self._docwords = tmp.tocsc()
+        data = []
+        indices = []
+        indptr = [0]
+        data_tmp = [self.smoothing] * len(self.classorder)
+        indices_tmp = [i for i in range(self.origvocabsize, len(self._vocab))]
+        for start, stop, title in zip(self._docwords.indptr[:-1],
+                                      self._docwords.indptr[1:],
+                                      self.titles):
+            # copy data from original docwords matrix
+            data.extend(self._docwords.data[start:stop])
+            indices.extend(self._docwords.indices[start:stop])
+            if title in self.labels:
+                # label document if labeled
+                label = self.labels[title]
+                data.append(self.label_weight(
+                    sum(self._docwords.data[start:stop]),
+                    self._docwords.shape[1]))
+                indices.append(self.origvocabsize+self.classorder[label])
+            else:
+                # otherwise, apply smoothing
+                data.extend(data_tmp)
+                indices.extend(indices_tmp)
+            indptr.append(len(data))
+        self._docwords = scipy.sparse.csc_matrix((data, indices, indptr),
+                                                 shape=(len(self._vocab),
+                                                        len(self.titles)))
         self.compute_cooccurrences()
 
     def label_document(self, title, label):
