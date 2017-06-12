@@ -70,14 +70,19 @@ class VariationalHelper:
         """
         countses = []
         for docws in docwses:
-            countses.append(np.bincount(docws))
+            tmp = {}
+            for token in docws:
+                if token in tmp:
+                    tmp[token] += 1
+                else:
+                    tmp[token] = 1
+            countses.append(tmp)
         with open(self.datafile, 'w') as ofh:
             for counts in countses:
                 line = []
-                for i, count in enumerate(counts):
-                    if count > 0:
-                        line.append(str(i)+':'+str(count))
-                line.insert(0, str(len(line)))
+                line.append(str(len(counts)))
+                for token, count in sorted(counts.items()):
+                    line.append(str(token)+':'+str(count))
                 ofh.write(' '.join(line)+'\n')
         subprocess.run(
             [
