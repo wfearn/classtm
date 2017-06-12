@@ -859,14 +859,26 @@ class IncrementalFreeClassifyingAnchor(AbstractIncrementalAnchor):
     def predict(self, tokenses):
         """Predict labels"""
         docwses = []
-        doc_words = scipy.sparse.dok_matrix(
-            (self.vocabsize-len(self.classorder), len(tokenses)))
-        for i, tokens in enumerate(tokenses):
+        data = []
+        indices = []
+        indptr = [0]
+        for tokens in tokenses:
             real_vocab = self._convert_vocab_space(tokens)
             docwses.append(real_vocab)
+            tmp = {}
             for token in real_vocab:
-                doc_words[token, i] += 1
+                if token in tmp:
+                    tmp[token] += 1
+                else:
+                    tmp[token] = 1
+            for token, count in sorted(tmp.items()):
+                data.append(count)
+                indices.append(token)
+            indptr.append(len(data))
         features = self.predict_topics(docwses)
+        doc_words = scipy.sparse.csc_matrix(
+            (data, indices, indptr),
+            shape=(self.vocabsize-len(self.classorder), len(tokenses)))
         return self.predictor.predict(features, doc_words.tocsc())
 
 
