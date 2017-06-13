@@ -121,7 +121,7 @@ compute_likelihood(document* doc, lda_model* model, double** phi, double* var_ga
             if (phi[n][k] > 0)
             {
                 likelihood += doc->counts[n]*
-                    (phi[n][k]*((dig[k] - digsum) - log(phi[n][k])
+                    (phi[n][k]*((dig[k] - digsum) - fasterlog(phi[n][k])
                                 + model->log_prob_w[k][doc->words[n]]));
             }
         }
