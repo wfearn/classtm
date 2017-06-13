@@ -12,11 +12,11 @@ double log_sum(double log_a, double log_b)
 
   if (log_a < log_b)
   {
-      v = log_b+log(1 + fasterexp(log_a-log_b));
+      v = log_b+fasterlog(1 + fasterexp(log_a-log_b));
   }
   else
   {
-      v = log_a+log(1 + fasterexp(log_b-log_a));
+      v = log_a+fasterlog(1 + fasterexp(log_b-log_a));
   }
   return(v);
 }
