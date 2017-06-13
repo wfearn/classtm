@@ -26,6 +26,20 @@ LDAC_EXE = os.path.join(LDA_DIR, 'lda')
 LDAC_SETTINGS = os.path.join(LDA_DIR, 'inf-settings.txt')
 
 
+def count_tokens(tokens):
+    """Count token types found in tokens
+
+        * tokens :: [str]
+    """
+    result = {}
+    for token in tokens:
+        if token in result:
+            result[token] += 1
+        else:
+            result[token] = 1
+    return result
+
+
 # pylint:disable-msg=too-few-public-methods
 class VariationalHelper:
     """Helper to get topic mixtures for documents"""
@@ -70,13 +84,7 @@ class VariationalHelper:
         """
         countses = []
         for docws in docwses:
-            tmp = {}
-            for token in docws:
-                if token in tmp:
-                    tmp[token] += 1
-                else:
-                    tmp[token] = 1
-            countses.append(tmp)
+            countses.append(count_tokens(docws))
         with open(self.datafile, 'w') as ofh:
             for counts in countses:
                 line = []
@@ -870,12 +878,7 @@ class IncrementalFreeClassifyingAnchor(AbstractIncrementalAnchor):
         for tokens in tokenses:
             real_vocab = self._convert_vocab_space(tokens)
             docwses.append(real_vocab)
-            tmp = {}
-            for token in real_vocab:
-                if token in tmp:
-                    tmp[token] += 1
-                else:
-                    tmp[token] = 1
+            tmp = count_tokens(real_vocab)
             for token, count in sorted(tmp.items()):
                 data.append(count)
                 indices.append(token)
