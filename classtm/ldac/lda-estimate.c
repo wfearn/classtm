@@ -276,7 +276,7 @@ void infer(char* model_root, char* save, corpus* corpus)
     fileptr = fopen(filename, "w");
     for (d = 0; d < corpus->num_docs; d++)
     {
-        if (((d % 100) == 0) && (d>0)) printf("document %d\n",d);
+        // if (((d % 100) == 0) && (d>0)) printf("document %d\n",d);
 
         doc = &(corpus->docs[d]);
         phi = (double**) malloc(sizeof(double*) * doc->length);
