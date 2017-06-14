@@ -38,7 +38,7 @@ double lda_inference(document* doc, lda_model* model, double* var_gamma, double*
     for (k = 0; k < model->num_topics; k++)
     {
         var_gamma[k] = model->alpha + (doc->total/((double) model->num_topics));
-        digamma_gam[k] = digamma(var_gamma[k]);
+        digamma_gam[k] = fasterdigamma(var_gamma[k]);
         for (n = 0; n < doc->length; n++)
             phi[n][k] = 1.0/model->num_topics;
     }
