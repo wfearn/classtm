@@ -899,6 +899,8 @@ FACTORY = {'logistic': LogisticAnchor,
 
 INCFACTORY = {'inclog': [IncrementalLogisticAnchor,
                          classtm.labeled.IncrementalSupervisedAnchorDataset],
+              'inclognormed': [IncrementalLogisticAnchor,
+                  classtm.labeled.IncrementalSupervisedNormalizedAnchorDataset],
               'incfree': [IncrementalFreeClassifyingAnchor,
                           classtm.labeled.IncrementalClassifiedDataset],
               'quickincfree': [

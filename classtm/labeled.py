@@ -728,6 +728,30 @@ class IncrementalSupervisedAnchorDataset(SupervisedAnchorDataset):
         self._cooccurrences = None
 
 
+class IncrementalSupervisedNormalizedAnchorDataset(
+        IncrementalSupervisedAnchorDataset):
+    """Dataset for incremental supervised anchor words, but each column of Q is
+    weighted to have equal weighting (the original anchor words algorithm very
+    heavily weights the last columns, which contain label information)
+    """
+
+    def __init__(self, dataset, _):
+        super(IncrementalSupervisedNormalizedAnchorDataset, self).__init__(
+            dataset,
+            {})
+
+    def compute_cooccurrences(self, epsilon=1e-15):
+        orig_height, orig_width = self._dataset_cooccurrences.shape
+        classcount = len(self.classorder)
+        super(IncrementalSupervisedNormalizedAnchorDataset,
+            self).compute_cooccurrences(epsilon)
+        self._cooccurrences[:, :-classcount] *= \
+            orig_width / (orig_width+classcount)
+        self._cooccurrences[:, -classcount:] *= classcount /\
+            (orig_width+classcount)
+
+
 SUPANCH_CTORS = [
     SupervisedAnchorDataset,
-    IncrementalSupervisedAnchorDataset]
+    IncrementalSupervisedAnchorDataset,
+    IncrementalSupervisedNormalizedAnchorDataset]

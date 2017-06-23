@@ -137,6 +137,8 @@ def _run():
 
         with open(outprefix+'.results', 'wb') as ofh:
             pickle.dump(results, ofh)
+        with open(outprefix+'.Q', 'wb') as ofh:
+            incrementaldataset.Q.dump(ofh)
     finally:
         os.remove(runningfile)
 
