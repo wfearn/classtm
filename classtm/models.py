@@ -917,12 +917,21 @@ INCFACTORY = {'inclog': [IncrementalLogisticAnchor,
                   classtm.labeled.ProjectedDataset],
               'incsvm': [IncrementalSVMAnchor,
                          classtm.labeled.IncrementalSupervisedAnchorDataset],
+              'incsvmnormed': [IncrementalSVMAnchor,
+                  classtm.labeled.IncrementalSupervisedNormalizedAnchorDataset],
               'incrf': [IncrementalRFAnchor,
                         classtm.labeled.IncrementalSupervisedAnchorDataset],
+              'incrfnormed': [IncrementalRFAnchor,
+                  classtm.labeled.IncrementalSupervisedNormalizedAnchorDataset],
               'incnb': [IncrementalNBAnchor,
                         classtm.labeled.IncrementalSupervisedAnchorDataset],
+              'incnbnormed': [IncrementalNBAnchor,
+                  classtm.labeled.IncrementalSupervisedNormalizedAnchorDataset],
               'inctsvm': [IncrementalTSVMAnchor,
-                          classtm.labeled.IncrementalSupervisedAnchorDataset]}
+                          classtm.labeled.IncrementalSupervisedAnchorDataset],
+              'inctsvmnormed': [IncrementalTSVMAnchor,
+                  classtm.labeled.IncrementalSupervisedNormalizedAnchorDataset],
+              }
 
 
 def build(rng, settings):
