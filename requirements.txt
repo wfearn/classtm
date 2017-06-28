@@ -1,6 +1,14 @@
--e git+https://github.com/jlund3/ankura#egg=ankura
--e git+https://github.com/nOkuda/activetm#egg=activetm
-numpy
-scipy
-sklearn
-bs4
+-e git+https://github.com/nOkuda/activetm@de69c678b8f15fba15d9a04ef696dbbe09a9a332#egg=activetm
+-e git+https://github.com/jlund3/ankura@b893d71b43b915fbbb25a6ba472ef77af46c3b98#egg=ankura
+beautifulsoup4==4.6.0
+bs4==0.0.1
+cycler==0.10.0
+matplotlib==2.0.2
+numpy==1.13.0
+pyparsing==2.2.0
+python-dateutil==2.6.0
+pytz==2017.2
+scikit-learn==0.18.2
+scipy==0.19.1
+six==1.10.0
+sklearn==0.0
