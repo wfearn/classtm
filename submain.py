@@ -38,6 +38,8 @@ def get_lda_helper(lda_type):
         return classtm.models.VariationalHelper
     elif lda_type == 'sampling':
         return classtm.models.SamplingHelper
+    elif lda_type == 'online':
+        return classtm.models.OnlineHelper
     else:
         raise ValueError("No lda_helper of type " + lda_type)
 

@@ -5,6 +5,7 @@ import subprocess
 import json
 import time
 
+import sklearn.decomposition as decomp
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import MultinomialNB
@@ -121,7 +122,7 @@ class SamplingHelper:
         self.numsamplesperpredictchain = 5
 
     def predict_topics(self, docwses):
-        """Call ankura to get topic mixes for all the documents
+        """Call ankura to get topic mixtures for all the documents
             * docwses :: [[int]]
                 the first dimension separates documents; the second dimension
                 separates tokens
@@ -138,6 +139,36 @@ class SamplingHelper:
             result /= (len(docws) * self.numsamplesperpredictchain)
             topic_mixes[i, :] = result
         return topic_mixes
+
+
+class OnlineHelper:
+    """Helper to get topic mixtures for documents via online variational bayes
+    """
+
+    def __init__(self, topics, _):
+        """Initialize files necessary to call scikit-learn
+
+            * topics :: 2D np.array
+                should have shape (vocab size, number of topics)
+        """
+        self.lda = decomp.LatentDirichletAllocation(topics.shape[1])
+        self.lda.components_ = topics.T
+        self.lda._init_latent_vars(topics.shape[0])
+
+    def predict_topics(self, docwses):
+        """Call online variational Bayes to compute topic mixtures"""
+        data = []
+        indices = []
+        indptr = [0]
+        for docws in docwses:
+            for token, count in sorted(count_tokens(docws).items()):
+                data.append(count)
+                indices.append(token)
+            indptr.append(len(data))
+        doc_words = scipy.sparse.csr_matrix(
+            (data, indices, indptr),
+            shape=(len(docwses), self.lda.components_.shape[1]))
+        return self.lda.transform(doc_words)
 
 
 # pylint:disable-msg=too-few-public-methods
