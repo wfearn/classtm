@@ -5,6 +5,7 @@ import random
 import subprocess
 import sys
 import time
+import uuid
 
 import matplotlib
 matplotlib.use('Agg')
@@ -18,8 +19,75 @@ from classtm import evaluate
 
 FILE_DIR = os.path.dirname(__file__)
 REPO_DIR = os.path.join(FILE_DIR, os.pardir)
-OUT_DIR = os.environ.get('CLASSTM_OUT_DIR', '/local/okuda/tmp')
+OUT_DIR = '/home/dev/source/school/tmp'
 
+SETTINGS_TEMPLATE = """# corpus options
+pickle  newsgroups.coarse.class.pickle
+corpus  /net/roi/okuda/data/amazon/amazon.txt
+labels  /net/roi/okuda/data/amazon/amazon.binary.response
+
+# filter options
+stopwords   /net/roi/okuda/data/stopwords.txt
+rare    50
+common  40000
+smalldoc    30
+pregenerate YES
+
+# experiment options
+group   --GROUP-- 
+seed    531
+testsize    1000
+startlabeled    1000
+endlabeled  1000
+increment   0
+
+# model options
+model   zeronegsfree
+numtopics   40
+expgrad_epsilon 1e-5
+lda_helper  variational
+smoothing  --SMOOTHING-- 
+label_weight    --LABELWEIGHT--
+"""
+
+def create_settings_file(smoothing=0.01, label_weight=500, group='nonegiven'):
+    """Creates a settings file for the given smoothing and label_weight values.
+    Returns the path to the generated file"""
+
+    file_content = SETTINGS_TEMPLATE.replace('--GROUP--', str(group))
+    file_content = file_content.replace('--SMOOTHING--', str(smoothing))
+    file_content = file_content.replace('--LABELWEIGHT--', str(label_weight))
+
+    file_name = 'loop.{}.settings'.format(str(uuid.uuid4()))
+
+    full_file_path = os.path.join(FILE_DIR, file_name)
+    
+    with open(full_file_path, 'w') as f:
+        f.write(file_content)
+
+    return full_file_path
+
+def create_settings_files():
+    start = .001
+    end = .1
+    step = .001
+
+    label_weight = 500
+    
+    settingses = []
+
+    for smoothing in matplotlib.mlab.frange(start, end, step):
+        group = '{}-{}'.format(smoothing, label_weight)
+
+        settings_file = create_settings_file(
+                smoothing=smoothing, 
+                label_weight=label_weight,
+                group=group,
+            )
+
+        settingses.append(settings_file)
+
+    return settingses
 
 def _run_experiments(settingses, num):
     """Run experiments with settings in settingses, each repeated num times"""
@@ -106,16 +174,24 @@ def _plot_results(settingses, num):
 
 def _run():
     """Run experiments and plot data"""
-    settingses = [
-        'sup.settings',
-        'supnormed.settings',
-        'projected.settings',
-        'zeroneg.settings',
-        ]
-    num = 100
+    #settingses = [
+    ##    'sup.settings',
+    ##    'supnormed.settings',
+    ##    'projected.settings',
+    #    'zeroneg.settings',
+    #    ]
     #_run_experiments(settingses, num)
+    #_plot_results(settingses, num)
+    settingses = create_settings_files()
+    num = 10
+
+    _run_experiments(settingses, num)
     _plot_results(settingses, num)
+
+    for settings_file in settingses:
+        os.remove(settings_file)
 
 
 if __name__ == '__main__':
     _run()
+    #create_settings_file(smoothing=1)
