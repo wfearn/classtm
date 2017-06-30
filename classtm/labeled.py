@@ -516,9 +516,11 @@ class ZeroNegativesDataset(QuickIncrementalClassifiedDataset):
         super(ZeroNegativesDataset, self).__init__(dataset,
                                                    settings)
 
-    def compute_cooccurrences(self, epsilon=1e-15):
-        super(ZeroNegativesDataset, self).compute_cooccurrences(epsilon)
-        self._cooccurrences[self._cooccurrences < 0] = 0
+    @property
+    def Q(self):
+        result = super(ZeroNegativesDataset, self).Q.copy()
+        result[result < 0] = 0
+        return result
 
 
 class ZeroEpsilonDataset(QuickIncrementalClassifiedDataset):
