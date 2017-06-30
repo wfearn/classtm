@@ -3,7 +3,9 @@
 beautifulsoup4==4.6.0
 bs4==0.0.1
 cycler==0.10.0
+llvmlite==0.18.0
 matplotlib==2.0.2
+numba==0.33.0
 numpy==1.13.0
 pyparsing==2.2.0
 python-dateutil==2.6.0
