@@ -68,24 +68,51 @@ def create_settings_file(smoothing=0.01, label_weight=500, group='nonegiven'):
     return full_file_path
 
 def create_settings_files():
-    start = .001
-    end = .1
-    step = .001
+    experiments = [
+            # Something smaller for the smoothing
+            (.0000001, 50),
+            (.0000001, 250),
+            (.0000001, 500),
+            (.0000001, 750),
 
-    label_weight = 500
-    
+            # Let's move around .1 as well
+            (.005, 50),
+            (.005, 250),
+            (.005, 500),
+            (.005, 750),
+
+            (.01, 50),
+            (.01, 250),
+            (.01, 500),
+            (.01, 750),
+
+            (.05, 50),
+            (.05, 250),
+            (.05, 500),
+            (.05, 750),
+
+            (.1, 50),
+            (.1, 250),
+            (.1, 500),
+            (.1, 750),
+
+            (.5, 50),
+            (.5, 250),
+            (.5, 500),
+            (.5, 750),
+        ]
     settingses = []
 
-    for smoothing in matplotlib.mlab.frange(start, end, step):
-        group = '{}-{}'.format(smoothing, label_weight)
+    for smoothing, label_weight in experiments:
+            group = '{}-{}'.format(smoothing, label_weight)
 
-        settings_file = create_settings_file(
-                smoothing=smoothing, 
-                label_weight=label_weight,
-                group=group,
-            )
+            settings_file = create_settings_file(
+                    smoothing=smoothing, 
+                    label_weight=label_weight,
+                    group=group,
+                )
 
-        settingses.append(settings_file)
+            settingses.append(settings_file)
 
     return settingses
 
