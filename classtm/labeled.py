@@ -462,11 +462,8 @@ class ProjectedDataset(QuickIncrementalClassifiedDataset):
     @property
     def Q(self):
         result = super(ProjectedDataset, self).Q.copy()
-        result = self._project(result)
         if np.any(result < 0):
-            print('Negative in Q')
-            print(np.transpose(np.nonzero(result < 0)))
-            print(result[result < 0], flush=True)
+            result = self._project(result)
         return result
 
     def compute_cooccurrences(self, epsilon=1e-15):
