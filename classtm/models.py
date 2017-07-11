@@ -921,6 +921,7 @@ class IncrementalFreeClassifyingAnchor(AbstractIncrementalAnchor):
         return self.predictor.predict(features, doc_words.tocsc())
 
 
+# supervised - assume that all the data with labels are given all at once
 FACTORY = {'logistic': LogisticAnchor,
            'free': FreeClassifyingAnchor,
            'svm': SVMAnchor,
@@ -928,6 +929,7 @@ FACTORY = {'logistic': LogisticAnchor,
            'nb': NBAnchor}
 
 
+# semi-supervised
 INCFACTORY = {'inclog': [IncrementalLogisticAnchor,
                          classtm.labeled.IncrementalSupervisedAnchorDataset],
               'inclognormed': [IncrementalLogisticAnchor,
