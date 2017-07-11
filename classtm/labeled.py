@@ -462,11 +462,8 @@ class ProjectedDataset(QuickIncrementalClassifiedDataset):
     @property
     def Q(self):
         result = super(ProjectedDataset, self).Q.copy()
-        result = self._project(result)
         if np.any(result < 0):
-            print('Negative in Q')
-            print(np.transpose(np.nonzero(result < 0)))
-            print(result[result < 0], flush=True)
+            result = self._project(result)
         return result
 
     def compute_cooccurrences(self, epsilon=1e-15):
@@ -516,9 +513,11 @@ class ZeroNegativesDataset(QuickIncrementalClassifiedDataset):
         super(ZeroNegativesDataset, self).__init__(dataset,
                                                    settings)
 
-    def compute_cooccurrences(self, epsilon=1e-15):
-        super(ZeroNegativesDataset, self).compute_cooccurrences(epsilon)
-        self._cooccurrences[self._cooccurrences < 0] = 0
+    @property
+    def Q(self):
+        result = super(ZeroNegativesDataset, self).Q.copy()
+        result[result < 0] = 0
+        return result
 
 
 class ZeroEpsilonDataset(QuickIncrementalClassifiedDataset):
@@ -694,6 +693,61 @@ class IncrementalSupervisedAnchorDataset(SupervisedAnchorDataset):
                                                                  {},
                                                                  {})
         self.titlesorder = get_titles_order(self.titles)
+        self.extra_counts = None
+        self.newlabels = {}
+
+    def compute_cooccurrences(self, epsilon=1e-15):
+        orig_height, orig_width = self._dataset_cooccurrences.shape
+        classcount = len(self.classorder)
+        self._cooccurrences = np.zeros((orig_height, orig_width+classcount))
+        self._cooccurrences[:, :-classcount] = self._dataset_cooccurrences
+        if not self.extra_counts:
+            self.extra_counts = np.zeros((orig_height, classcount))
+            for title, label in self.newlabels.items():
+                self.labels[title] = label
+            # assuming that self._docwords is an instance of a scipy sparse
+            # matrix
+            docwords_csr = self._docwords.tocsr()
+            indices = docwords_csr.indices
+            indptr = docwords_csr.indptr
+            data = docwords_csr.data
+            for i in range(orig_height):
+                for docnum, datum in zip(indices[indptr[i]:indptr[i+1]],
+                                         data[indptr[i]:indptr[i+1]]):
+                    if datum > 0:
+                        # tally up number documents with class label
+                        label_string = self.labels.get(self.titles[docnum])
+                        if label_string:
+                            # count up number of labeled documents with word i
+                            label = self.classorder[label_string]
+                            self.extra_counts[i, label] += 1
+        else:
+            docwords_csc = self._docwords.tocsc()
+            indices = docwords_csc.indices
+            indptr = docwords_csc.indptr
+            data = docwords_csc.data
+            for title, label_string in self.newlabels.items():
+                title_index = self.titlesorder[title]
+                label = self.classorder[label_string]
+                if title in self.labels:
+                    # document has been re-labeled, so remove counts for label
+                    prev_label = self.classorder[self.labels[title]]
+                    for word, count in zip(
+                            indices[indptr[title_index]:indptr[title_index+1]],
+                            data[indptr[title_index]:indptr[title_index+1]]):
+                        if count > 0:
+                            self.extra_counts[word, prev_label] -= 1
+                for word, count in zip(
+                        indices[indptr[title_index]:indptr[title_index+1]],
+                        data[indptr[title_index]:indptr[title_index+1]]):
+                    if count > 0:
+                        self.extra_counts[word, label] += 1
+        # normalize tally
+        row_sums = self.extra_counts.sum(axis=1, keepdims=True)
+        # prevent divisions by zero
+        row_sums[row_sums == 0] = 1
+        self._cooccurrences[:, -classcount:] = self.extra_counts / row_sums
+        self.newlabels = {}
 
     def initial_label(self, titles, labels):
         """Account for initially labeled documents
@@ -721,7 +775,7 @@ class IncrementalSupervisedAnchorDataset(SupervisedAnchorDataset):
                 label of document
         Assumes that title is in corpus
         """
-        self.labels[title] = label
+        self.newlabels[title] = label
         if label not in self.classorder:
             self.classorder[label] = len(self.classorder)
             self.orderedclasses = orderclasses(self.classorder)
