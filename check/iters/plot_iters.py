@@ -37,21 +37,22 @@ def _main():
     """Plot histograms of iteration data"""
     data = [
         ('supervised', get_values('sup.iters')),
+        ('free', get_values('zeronegs.iters')),
         ('overwatched', get_values('over.iters')),
-        ('free', get_values('projected.iters')),
     ]
 
     plt.style.use('ggplot')
     fig, ax = plt.subplots()
+    fig.set_size_inches(4, 2.5)
     plot_hists(ax, data)
-    ax.legend(loc='lower right')
     ax.set_xlabel('iterations')
     ax.set_ylabel('rows')
-    axins = inset_axes(ax, 3, 2, loc=1)
+    axins = inset_axes(ax, 1.75, 0.8, loc=1)
     plot_hists(axins, data)
     axins.axis([0, 200, 0, 1650])
     mark_inset(ax, axins, loc1=2, loc2=4, fc="none", ec="0.5", ls='dashdot')
-    fig.savefig('iters_inset.pdf', bbox_inches='tight')
+    lgd = ax.legend(loc='lower right')
+    fig.savefig('iters_inset.pdf', bbox_extra_artists=(lgd, ), bbox_inches='tight')
 
 
 if __name__ == '__main__':
