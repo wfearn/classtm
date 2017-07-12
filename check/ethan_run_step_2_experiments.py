@@ -16,7 +16,6 @@ OUT_DIR = os.environ.get('CLASSTM_OUT_DIR', '/local/okuda/tmp')
 def _run_supervised_experiments(settingses, num, seed):
     """Run experiments with settings in settingses, each repeated num times"""
     for i in range(num):
-        cur_seed = random.randint(0, sys.maxsize)
         for settings in settingses:
             print('====', cur_seed, settings, '====', flush=True)
             start = time.time()
@@ -26,7 +25,7 @@ def _run_supervised_experiments(settingses, num, seed):
                 os.path.join(FILE_DIR, settings),
                 OUT_DIR,
                 str(i),
-                str(cur_seed)])
+                str(seed)])
             print('####', time.time() - start, flush=True)
 
 def _run_semi_supervised_experiments(settingses, num, seed):
@@ -41,7 +40,7 @@ def _run_semi_supervised_experiments(settingses, num, seed):
                 os.path.join(FILE_DIR, settings),
                 OUT_DIR,
                 str(i),
-                str(cur_seed)])
+                str(seed)])
             print('####', time.time() - start, flush=True)
 
 def _run_all_the_things():
@@ -63,4 +62,4 @@ def _run_all_the_things():
     _run_semi_supervised_experiments(semi_supervised_settingses, num, seed)
 
 if __name__ == '__main__':
-    _run()
+    _run_all_the_things()
