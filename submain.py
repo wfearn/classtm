@@ -83,7 +83,7 @@ def _run():
             rng = random.Random(int(settings['seed']))
         else:
             rng = random.Random(args.seed)
-        # print('Set random seed: ', args.seed)
+        print('Set random seed: ', args.seed)
         model = classtm.models.build(rng, settings)
         # print('Built model')
         test_doc_ids, train_doc_ids = partition_data_ids(dataset.num_docs,

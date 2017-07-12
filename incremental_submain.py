@@ -43,6 +43,7 @@ def parse_args():
 def _run():
     args = parse_args()
     settings = utils.parse_settings(args.settings)
+
     trueoutputdir = os.path.join(args.outputdir, settings['group'])
     submain.ensure_dir_exists(trueoutputdir)
     # for killing currently running jobs
@@ -67,7 +68,7 @@ def _run():
             rng = random.Random(int(settings['seed']))
         else:
             rng = random.Random(args.seed)
-        # print('Set random seed: ', args.seed)
+        print('Set random seed: ', args.seed)
         test_doc_ids, train_doc_ids = submain.partition_data_ids(dataset.num_docs,
                                                                  rng,
                                                                  settings)
