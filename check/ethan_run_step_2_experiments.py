@@ -17,7 +17,7 @@ def _run_supervised_experiments(settingses, num, seed):
     """Run experiments with settings in settingses, each repeated num times"""
     for i in range(num):
         for settings in settingses:
-            print('====', cur_seed, settings, '====', flush=True)
+            print('====', seed, settings, '====', flush=True)
             start = time.time()
             subprocess.run([
                 'python3',
@@ -32,7 +32,7 @@ def _run_semi_supervised_experiments(settingses, num, seed):
     """Run experiments with settings in settingses, each repeated num times"""
     for i in range(num):
         for settings in settingses:
-            print('====', cur_seed, settings, '====', flush=True)
+            print('====', seed, settings, '====', flush=True)
             start = time.time()
             subprocess.run([
                 'python3',
@@ -58,7 +58,7 @@ def _run_all_the_things():
         'ethan_semisupervised_sank.settings',
         ]
 
-    _run_supervised_experiments(supervised_settingses, num, sedd)
+    _run_supervised_experiments(supervised_settingses, num, seed)
     _run_semi_supervised_experiments(semi_supervised_settingses, num, seed)
 
 if __name__ == '__main__':
