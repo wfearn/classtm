@@ -1,0 +1,27 @@
+# corpus options
+pickle  newsgroups.coarse.class.pickle
+corpus  /net/roi/okuda/data/amazon/amazon.txt
+labels  /net/roi/okuda/data/amazon/amazon.binary.response
+
+# filter options
+stopwords   /net/roi/okuda/data/stopwords.txt
+rare    50
+common  40000
+smalldoc    30
+pregenerate YES
+
+# experiment options
+group   supervised-free-classifier 
+seed    531
+testsize    1000
+startlabeled    1000
+endlabeled  1000
+increment   0
+
+# model options
+model  free 
+numtopics   40
+expgrad_epsilon 1e-5
+lda_helper  variational
+smoothing   0.01
+label_weight    500
