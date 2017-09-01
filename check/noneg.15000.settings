@@ -1,10 +1,10 @@
 # corpus options
 pickle  newsgroups.coarse.class.pickle
-corpus  /net/roi/okuda/data/amazon/amazon.txt
-labels  /net/roi/okuda/data/amazon/amazon.binary.response
+corpus  /users/ugrad/w/wfearn/NLPLabRepos/data/amazon/amazon.txt
+labels  /users/ugrad/w/wfearn/NLPLabRepos/data/amazon/amazon.binary.response
 
 # filter options
-stopwords   /net/roi/okuda/data/stopwords.txt
+stopwords   /users/ugrad/w/wfearn/NLPLabRepos/data/stopwords.txt
 rare    50
 common  40000
 smalldoc    30
