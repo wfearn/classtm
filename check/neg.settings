@@ -4,7 +4,7 @@ corpus  /users/ugrad/w/wfearn/NLPLabRepos/data/amazon/amazon.txt
 labels  /users/ugrad/w/wfearn/NLPLabRepos/data/amazon/amazon.binary.response
 
 # filter options
-stopwords   /users/ugrad/w/wfearn/NLPLabRepos/data/stopwords.txt
+stopwords   /users/ugrad/w/wfearn/NLPLabRepos/data/stopwords/english.txt
 rare    50
 common  40000
 smalldoc    30
