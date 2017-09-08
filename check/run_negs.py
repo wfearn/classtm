@@ -16,7 +16,7 @@ from classtm import evaluate
 
 FILE_DIR = os.path.dirname(__file__)
 REPO_DIR = os.path.join(FILE_DIR, os.pardir)
-OUT_DIR = '/local/okuda/tmp'
+OUT_DIR = '/users/ugrad/w/wfearn/Output/ClassTMOutput'
 
 
 def _run_experiments(settingses, num):

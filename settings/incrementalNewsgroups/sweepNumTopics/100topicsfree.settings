@@ -1,11 +1,11 @@
 # corpus options
 pickle  newsgroups.coarse.class.pickle
-corpus  /local/cojoco/data/newsgroups-dedup/*/*
+corpus  /users/ugrad/w/wfearn/NLPLabRepos/data/newsgroups-dedup/*/*
 
 # filter options
-englstop  /local/cojoco/data/stopwords/english.txt
-newsstop  /local/cojoco/data/stopwords/newsgroups.txt
-namestop  /local/cojoco/data/stopwords/malenames.txt
+englstop  /users/ugrad/w/wfearn/NLPLabRepos/data/stopwords/english.txt
+newsstop  /users/ugrad/w/wfearn/NLPLabRepos/data/stopwords/newsgroups.txt
+namestop  /users/ugrad/w/wfearn/NLPLabRepos/data/stopwords/malenames.txt
 rare    100
 common  1500
 pregenerate YES
@@ -19,7 +19,7 @@ endlabeled  5000
 increment   1
 
 # model options
-model   quickincfree
+model   free
 numtopics   100
 expgrad_epsilon 1e-4
 lda_helper  variational

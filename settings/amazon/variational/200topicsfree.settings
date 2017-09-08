@@ -1,7 +1,7 @@
 # corpus options
 pickle  amazon.class.pickle
 corpus  /users/ugrad/w/wfearn/NLPLabRepos/data/amazon/amazon.txt
-labels  /users/ugrad/w/wfearn/NLPLabRepos/data/amazon/amazon.binary.response
+labels  /users/ugrad/w/wfearn/NLPLabRepos/data/amazon/amazon.response
 
 # filter options
 stopwords   /users/ugrad/w/wfearn/NLPLabRepos/data/stopwords/english.txt
@@ -20,3 +20,8 @@ model   free
 numtopics   200
 expgrad_epsilon 1e-4
 lda_helper  variational
+smoothing 0.01
+label_weight 500
+startlabeled 5000
+endlabeled 5000
+increment 1

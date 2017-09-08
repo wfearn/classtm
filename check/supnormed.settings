@@ -1,7 +1,7 @@
 # corpus options
 pickle  newsgroups.coarse.class.pickle
 corpus  /users/ugrad/w/wfearn/NLPLabRepos/data/amazon/amazon.txt
-labels  /users/ugrad/w/wfearn/NLPLabRepos/data/amazon/amazon.binary.response
+labels  /users/ugrad/w/wfearn/NLPLabRepos/data/amazon/amazon.response
 
 # filter options
 stopwords   /users/ugrad/w/wfearn/NLPLabRepos/data/stopwords/english.txt
